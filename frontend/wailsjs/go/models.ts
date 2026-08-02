@@ -1,0 +1,255 @@
+export namespace catalog {
+	
+	export class Form {
+	    form: string;
+	    name: string;
+	    path: string;
+	    status: string;
+	    description?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Form(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.form = source["form"];
+	        this.name = source["name"];
+	        this.path = source["path"];
+	        this.status = source["status"];
+	        this.description = source["description"];
+	    }
+	}
+	export class Parent {
+	    key: string;
+	    label?: string;
+	    repo: string;
+	    ref: string;
+	    forms: Form[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Parent(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.label = source["label"];
+	        this.repo = source["repo"];
+	        this.ref = source["ref"];
+	        this.forms = this.convertValues(source["forms"], Form);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Registry {
+	    schema_version: number;
+	    parents: Parent[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Registry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.schema_version = source["schema_version"];
+	        this.parents = this.convertValues(source["parents"], Parent);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
+export namespace manifest {
+	
+	export class Patch {
+	    file: string;
+	    op: string;
+	    path: string;
+	    value?: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new Patch(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.file = source["file"];
+	        this.op = source["op"];
+	        this.path = source["path"];
+	        this.value = source["value"];
+	    }
+	}
+	export class Feature {
+	    key: string;
+	    label?: string;
+	    default?: boolean;
+	    files?: string[];
+	    patches?: Patch[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Feature(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.label = source["label"];
+	        this.default = source["default"];
+	        this.files = source["files"];
+	        this.patches = this.convertValues(source["patches"], Patch);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Verify {
+	    image: string;
+	    run: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Verify(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.image = source["image"];
+	        this.run = source["run"];
+	    }
+	}
+	export class Rename {
+	    from: string;
+	    to: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Rename(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.from = source["from"];
+	        this.to = source["to"];
+	    }
+	}
+	export class Variable {
+	    key: string;
+	    label?: string;
+	    type?: string;
+	    pattern?: string;
+	    options?: string[];
+	    default?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Variable(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.label = source["label"];
+	        this.type = source["type"];
+	        this.pattern = source["pattern"];
+	        this.options = source["options"];
+	        this.default = source["default"];
+	    }
+	}
+	export class Manifest {
+	    schema_version: number;
+	    name: string;
+	    description?: string;
+	    platform?: string;
+	    framework?: string;
+	    variables?: Variable[];
+	    identity?: Rename[];
+	    features?: Feature[];
+	    verify?: Verify;
+	
+	    static createFrom(source: any = {}) {
+	        return new Manifest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.schema_version = source["schema_version"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.platform = source["platform"];
+	        this.framework = source["framework"];
+	        this.variables = this.convertValues(source["variables"], Variable);
+	        this.identity = this.convertValues(source["identity"], Rename);
+	        this.features = this.convertValues(source["features"], Feature);
+	        this.verify = this.convertValues(source["verify"], Verify);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	
+
+}
+
