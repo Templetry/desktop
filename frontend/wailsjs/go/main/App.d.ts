@@ -7,8 +7,16 @@ export function ChooseOutputDir():Promise<string>;
 
 export function CreateProject(arg1:string,arg2:string,arg3:Record<string, string>,arg4:Record<string, boolean>):Promise<string>;
 
+export function GetAuthStatus():Promise<any>;
+
 export function GetCatalog():Promise<catalog.Registry>;
 
 export function GetTemplate(arg1:string):Promise<manifest.Manifest>;
 
+export function Logout():Promise<void>;
+
 export function PlanProject(arg1:string,arg2:Record<string, string>,arg3:Record<string, boolean>):Promise<string>;
+
+export function PublishProject(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<string>;
+
+export function StartGitHubLogin():Promise<any>;

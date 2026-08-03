@@ -22,6 +22,10 @@ type App struct {
 	mu    sync.Mutex
 	reg   *catalog.Registry
 	cache map[string]*bundle
+
+	token        string
+	auth         AuthStatus
+	authRestored bool
 }
 
 type bundle struct {

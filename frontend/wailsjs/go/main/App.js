@@ -10,6 +10,10 @@ export function CreateProject(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['CreateProject'](arg1, arg2, arg3, arg4);
 }
 
+export function GetAuthStatus() {
+  return window['go']['main']['App']['GetAuthStatus']();
+}
+
 export function GetCatalog() {
   return window['go']['main']['App']['GetCatalog']();
 }
@@ -18,6 +22,18 @@ export function GetTemplate(arg1) {
   return window['go']['main']['App']['GetTemplate'](arg1);
 }
 
+export function Logout() {
+  return window['go']['main']['App']['Logout']();
+}
+
 export function PlanProject(arg1, arg2, arg3) {
   return window['go']['main']['App']['PlanProject'](arg1, arg2, arg3);
+}
+
+export function PublishProject(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['PublishProject'](arg1, arg2, arg3, arg4);
+}
+
+export function StartGitHubLogin() {
+  return window['go']['main']['App']['StartGitHubLogin']();
 }

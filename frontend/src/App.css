@@ -95,3 +95,24 @@ button.primary:hover:not(:disabled) { background: #5a6892; }
 .output { color: #9fe8a9; border: 1px solid #2a4a33; }
 
 .empty { color: #565b6e; margin-top: 40vh; text-align: center; }
+
+.authbox {
+    margin-top: 26px;
+    padding-top: 16px;
+    border-top: 1px solid #2a2e3a;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.authbox .who { font-size: 14px; color: #9fe8a9; }
+.authbox .pending { font-size: 12px; color: #8a8fa3; }
+.authbox .pending strong {
+    display: block;
+    font-size: 20px;
+    letter-spacing: 3px;
+    color: #e6e6e9;
+    margin-top: 4px;
+}
+.authbox .autherr { font-size: 11px; color: #ff8484; }
+.publish { border-top: 1px solid #2a2e3a; padding-top: 18px; }
+.hint { font-size: 13px; color: #8a8fa3; }

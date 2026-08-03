@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { GetCatalog, GetTemplate, PlanProject, CreateProject, ChooseOutputDir } from "../wailsjs/go/main/App";
+import {
+    GetCatalog, GetTemplate, PlanProject, CreateProject, ChooseOutputDir,
+    GetAuthStatus, StartGitHubLogin, Logout, PublishProject,
+} from "../wailsjs/go/main/App";
 import "./App.css";
 
 type Form = { form: string; name: string; path: string; status: string; description?: string };
@@ -18,12 +21,24 @@ function App() {
     const [output, setOutput] = useState("");
     const [error, setError] = useState("");
     const [busy, setBusy] = useState(false);
+    const [auth, setAuth] = useState<any>({ state: "logged_out" });
+    const [createdDir, setCreatedDir] = useState("");
+    const [repoName, setRepoName] = useState("");
+    const [repoPrivate, setRepoPrivate] = useState(true);
+    const [repoUrl, setRepoUrl] = useState("");
 
     useEffect(() => {
         GetCatalog()
             .then((reg: any) => setParents(reg.parents ?? []))
             .catch((e: any) => setError(String(e)));
+        GetAuthStatus().then(setAuth).catch(() => {});
     }, []);
+
+    useEffect(() => {
+        if (auth.state !== "pending") return;
+        const t = setInterval(() => GetAuthStatus().then(setAuth).catch(() => {}), 3000);
+        return () => clearInterval(t);
+    }, [auth.state]);
 
     const pick = async (ref: string) => {
         setSelected(ref);
@@ -62,6 +77,25 @@ function App() {
                 ? await CreateProject(selected, outDir, inputs, feats)
                 : await PlanProject(selected, inputs, feats);
             setOutput(String(result));
+            if (create) {
+                setCreatedDir(outDir);
+                const seg = outDir.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
+                setRepoName(seg.toLowerCase().replace(/[^a-z0-9._-]+/g, "-"));
+                setRepoUrl("");
+            }
+        } catch (e) {
+            setError(String(e));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const publish = async () => {
+        setBusy(true);
+        setError("");
+        try {
+            const url = await PublishProject(createdDir, repoName, `Created with Templetry (${selected})`, repoPrivate);
+            setRepoUrl(String(url));
         } catch (e) {
             setError(String(e));
         } finally {
@@ -95,6 +129,31 @@ function App() {
                         })}
                     </div>
                 ))}
+                <div className="authbox">
+                    {auth.state === "logged_in" && (
+                        <>
+                            <span className="who">@{auth.login}</span>
+                            <button onClick={() => Logout().then(() => setAuth({ state: "logged_out" }))}>
+                                Sign out
+                            </button>
+                        </>
+                    )}
+                    {auth.state === "pending" && (
+                        <div className="pending">
+                            <span>Enter this code on GitHub:</span>
+                            <strong>{auth.userCode}</strong>
+                        </div>
+                    )}
+                    {(auth.state === "logged_out" || auth.state === "error") && (
+                        <button
+                            className="primary"
+                            onClick={() => StartGitHubLogin().then(setAuth).catch((e: any) => setError(String(e)))}
+                        >
+                            Sign in with GitHub
+                        </button>
+                    )}
+                    {auth.error && <span className="autherr">{auth.error}</span>}
+                </div>
             </aside>
 
             <main>
@@ -170,6 +229,39 @@ function App() {
 
                         {error && <pre className="error">{error}</pre>}
                         {output && <pre className="output">{output}</pre>}
+
+                        {createdDir && !repoUrl && (
+                            <section className="publish">
+                                <h3>Publish to GitHub</h3>
+                                {auth.state !== "logged_in" ? (
+                                    <p className="hint">Sign in with GitHub (sidebar) to publish this project.</p>
+                                ) : (
+                                    <>
+                                        <div className="outrow">
+                                            <input
+                                                value={repoName}
+                                                onChange={(e) => setRepoName(e.target.value)}
+                                                placeholder="repository-name"
+                                            />
+                                            <label className="feature">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={repoPrivate}
+                                                    onChange={(e) => setRepoPrivate(e.target.checked)}
+                                                />
+                                                <span>Private</span>
+                                            </label>
+                                            <button className="primary" disabled={busy} onClick={publish}>
+                                                Create repo & push
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </section>
+                        )}
+                        {repoUrl && (
+                            <pre className="output">Published: {repoUrl}</pre>
+                        )}
                     </>
                 )}
                 {selected && !manifest && !error && <div className="empty">Fetching template…</div>}
