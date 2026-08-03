@@ -124,7 +124,7 @@ func (a *App) StartGitHubLogin() (AuthStatus, error) {
 		return AuthStatus{}, fmt.Errorf("no GitHub OAuth App configured: set the client id first")
 	}
 	res, err := postForm("https://github.com/login/device/code", url.Values{
-		"client_id": {id}, "scope": {"repo"},
+		"client_id": {id}, "scope": {"repo workflow"},
 	})
 	if err != nil {
 		return AuthStatus{}, fmt.Errorf("starting device flow: %w", err)
