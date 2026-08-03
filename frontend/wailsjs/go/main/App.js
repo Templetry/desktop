@@ -6,6 +6,14 @@ export function ChooseOutputDir() {
   return window['go']['main']['App']['ChooseOutputDir']();
 }
 
+export function ChooseParentDir() {
+  return window['go']['main']['App']['ChooseParentDir']();
+}
+
+export function CreateFullProject(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) {
+  return window['go']['main']['App']['CreateFullProject'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+}
+
 export function CreateProject(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['CreateProject'](arg1, arg2, arg3, arg4);
 }
@@ -16,6 +24,14 @@ export function GetAuthStatus() {
 
 export function GetCatalog() {
   return window['go']['main']['App']['GetCatalog']();
+}
+
+export function GetLastParentDir() {
+  return window['go']['main']['App']['GetLastParentDir']();
+}
+
+export function GetOwners() {
+  return window['go']['main']['App']['GetOwners']();
 }
 
 export function GetTemplate(arg1) {

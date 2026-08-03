@@ -5,11 +5,19 @@ import {manifest} from '../models';
 
 export function ChooseOutputDir():Promise<string>;
 
+export function ChooseParentDir():Promise<string>;
+
+export function CreateFullProject(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:boolean,arg7:string,arg8:Record<string, string>,arg9:Record<string, boolean>):Promise<any>;
+
 export function CreateProject(arg1:string,arg2:string,arg3:Record<string, string>,arg4:Record<string, boolean>):Promise<string>;
 
 export function GetAuthStatus():Promise<any>;
 
 export function GetCatalog():Promise<catalog.Registry>;
+
+export function GetLastParentDir():Promise<string>;
+
+export function GetOwners():Promise<string[]>;
 
 export function GetTemplate(arg1:string):Promise<manifest.Manifest>;
 
