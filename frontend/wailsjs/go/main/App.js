@@ -10,6 +10,10 @@ export function ChooseParentDir() {
   return window['go']['main']['App']['ChooseParentDir']();
 }
 
+export function CloneRepo(arg1, arg2) {
+  return window['go']['main']['App']['CloneRepo'](arg1, arg2);
+}
+
 export function CreateFullProject(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) {
   return window['go']['main']['App']['CreateFullProject'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
 }
@@ -34,32 +38,24 @@ export function GetOwners() {
   return window['go']['main']['App']['GetOwners']();
 }
 
-export function GetTemplate(arg1) {
-  return window['go']['main']['App']['GetTemplate'](arg1);
-}
-
 export function GetSettings() {
   return window['go']['main']['App']['GetSettings']();
 }
 
-export function SaveSettings(arg1) {
-  return window['go']['main']['App']['SaveSettings'](arg1);
+export function GetTemplate(arg1) {
+  return window['go']['main']['App']['GetTemplate'](arg1);
 }
 
 export function ListRepos() {
   return window['go']['main']['App']['ListRepos']();
 }
 
-export function CloneRepo(arg1, arg2) {
-  return window['go']['main']['App']['CloneRepo'](arg1, arg2);
+export function Logout() {
+  return window['go']['main']['App']['Logout']();
 }
 
 export function OpenRepo(arg1) {
   return window['go']['main']['App']['OpenRepo'](arg1);
-}
-
-export function Logout() {
-  return window['go']['main']['App']['Logout']();
 }
 
 export function PlanProject(arg1, arg2, arg3) {
@@ -68,6 +64,10 @@ export function PlanProject(arg1, arg2, arg3) {
 
 export function PublishProject(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['PublishProject'](arg1, arg2, arg3, arg4);
+}
+
+export function SaveSettings(arg1) {
+  return window['go']['main']['App']['SaveSettings'](arg1);
 }
 
 export function StartGitHubLogin() {

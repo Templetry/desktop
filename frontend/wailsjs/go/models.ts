@@ -93,6 +93,97 @@ export namespace catalog {
 
 }
 
+export namespace main {
+	
+	export class AuthStatus {
+	    state: string;
+	    login?: string;
+	    userCode?: string;
+	    verificationUri?: string;
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AuthStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.state = source["state"];
+	        this.login = source["login"];
+	        this.userCode = source["userCode"];
+	        this.verificationUri = source["verificationUri"];
+	        this.error = source["error"];
+	    }
+	}
+	export class CreatedProject {
+	    url: string;
+	    dir: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CreatedProject(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.url = source["url"];
+	        this.dir = source["dir"];
+	    }
+	}
+	export class Repo {
+	    name: string;
+	    fullName: string;
+	    owner: string;
+	    description: string;
+	    htmlUrl: string;
+	    cloneUrl: string;
+	    private: boolean;
+	    language: string;
+	    updatedAt: string;
+	    archived: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Repo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.fullName = source["fullName"];
+	        this.owner = source["owner"];
+	        this.description = source["description"];
+	        this.htmlUrl = source["htmlUrl"];
+	        this.cloneUrl = source["cloneUrl"];
+	        this.private = source["private"];
+	        this.language = source["language"];
+	        this.updatedAt = source["updatedAt"];
+	        this.archived = source["archived"];
+	    }
+	}
+	export class appConfig {
+	    lastParentDir: string;
+	    defaultParentDir: string;
+	    defaultOwner: string;
+	    defaultPrivate: boolean;
+	    defaultLicense: string;
+	    registryUrl: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new appConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.lastParentDir = source["lastParentDir"];
+	        this.defaultParentDir = source["defaultParentDir"];
+	        this.defaultOwner = source["defaultOwner"];
+	        this.defaultPrivate = source["defaultPrivate"];
+	        this.defaultLicense = source["defaultLicense"];
+	        this.registryUrl = source["registryUrl"];
+	    }
+	}
+
+}
+
 export namespace manifest {
 	
 	export class Patch {
