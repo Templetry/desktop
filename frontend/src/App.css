@@ -1,4 +1,4 @@
-:root {
+﻿:root {
     color-scheme: dark;
     --ink: #15171e;
     --ink-2: #1b1e27;
@@ -85,7 +85,7 @@ select option {
     min-height: 0;
 }
 
-/* ── Sidebar: the loom ─────────────────────────────── */
+/* â”€â”€ Sidebar: the loom â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 aside {
     width: 280px;
     padding: 22px 16px;
@@ -122,11 +122,11 @@ aside {
 }
 .form:hover:not(:disabled) { background: var(--surface); }
 .form.active { background: var(--surface); border-color: var(--brass-deep); }
-.form.active span::before { content: "▸ "; color: var(--brass); }
+.form.active span::before { content: "â–¸ "; color: var(--brass); }
 .form:disabled { color: #5b5f6e; cursor: default; }
 .form em { font-size: 11px; color: #5b5f6e; font-style: normal; }
 
-/* ── Main ──────────────────────────────────────────── */
+/* â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 main { flex: 1; padding: 30px 36px; overflow-y: auto; }
 main header h2 { font-size: 21px; font-weight: 650; }
 main header p { color: var(--linen-dim); font-size: 13px; margin-top: 4px; }
@@ -202,7 +202,7 @@ button.primary:hover:not(:disabled) { background: #e4b458; }
 
 .empty { color: #5b5f6e; margin-top: 40vh; text-align: center; }
 
-/* ── Auth ──────────────────────────────────────────── */
+/* â”€â”€ Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .authbox {
     margin-top: 26px;
     padding-top: 16px;
@@ -224,7 +224,7 @@ button.primary:hover:not(:disabled) { background: #e4b458; }
 .authbox .autherr { font-size: 11px; color: var(--bad); }
 .hint { font-size: 13px; color: var(--linen-dim); margin-top: 6px; }
 
-/* ── Nav ───────────────────────────────────────────── */
+/* â”€â”€ Nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .nav { display: flex; gap: 6px; margin: 0 0 16px; }
 .nav button { flex: 1; padding: 7px 0; font-size: 13px; }
 .nav button.active {
@@ -233,7 +233,7 @@ button.primary:hover:not(:disabled) { background: #e4b458; }
     background: var(--ink-2);
 }
 
-/* ── Adaptive workspace ────────────────────────────── */
+/* â”€â”€ Adaptive workspace â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .workspace { display: flex; flex-direction: column; gap: 8px; }
 .formcol { min-width: 0; }
 .sidecol { min-width: 0; }
@@ -247,7 +247,7 @@ button.primary:hover:not(:disabled) { background: #e4b458; }
     font-size: 13px;
 }
 
-@media (min-width: 1240px) {
+@media (min-width: 1100px) {
     .workspace { flex-direction: row; gap: 28px; }
     .formcol { width: 620px; flex-shrink: 0; }
     .sidecol { flex: 1; position: sticky; top: 0; }
@@ -255,7 +255,7 @@ button.primary:hover:not(:disabled) { background: #e4b458; }
     .previewempty { display: flex; align-items: center; justify-content: center; margin-top: 24px; min-height: 300px; }
 }
 
-/* ── Preview ───────────────────────────────────────── */
+/* â”€â”€ Preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .preview {
     display: flex;
     gap: 0;
@@ -303,13 +303,13 @@ button.primary:hover:not(:disabled) { background: #e4b458; }
     white-space: pre;
 }
 
-@media (min-width: 1240px) {
+@media (min-width: 1100px) {
     .preview { height: calc(100vh - 230px); }
 }
 
-/* ── Repos ─────────────────────────────────────────── */
+/* â”€â”€ Repos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .repolist { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
-@media (min-width: 1240px) {
+@media (min-width: 1100px) {
     .repolist {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(430px, 1fr));

@@ -104,7 +104,10 @@ function App() {
 
     const preview = async () => {
         setBusy(true); setError(""); setResult(null); setPreviewSel(""); setPreviewContent("");
-        try { setPreviewEntries((await PreviewProject(selected, inputs, feats)) as any[]); }
+        try {
+            setPreviewEntries((await PreviewProject(selected, inputs, feats)) as any[]);
+            setTimeout(() => document.querySelector(".previewsec")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+        }
         catch (e) { setError(String(e)); } finally { setBusy(false); }
     };
 
