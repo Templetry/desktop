@@ -298,6 +298,8 @@ function App() {
                             <h2>{manifest.name}</h2>
                             {manifest.description && <p>{manifest.description}</p>}
                         </header>
+                        <div className="workspace">
+                        <div className="formcol">
 
                         {(manifest.variables ?? []).length > 0 && (
                             <section>
@@ -382,31 +384,37 @@ function App() {
 
                         {busy && <p className="hint">Working…</p>}
                         {error && <pre className="error">{error}</pre>}
-                        {previewEntries.length > 0 && (
-                            <section>
-                                <h3>Preview — {previewEntries.length} files</h3>
-                                <div className="preview">
-                                    <div className="ptree">
-                                        {previewEntries.map((e) => (
-                                            <button key={e.path}
-                                                className={`pfile ${previewSel === e.path ? "active" : ""}`}
-                                                onClick={() => openPreviewFile(e.path)}>
-                                                <span>{e.path}</span>
-                                                <em>{e.binary ? "bin" : `${e.size}b`}</em>
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <pre className="pcontent">
-                                        {previewSel ? previewContent : "Select a file to inspect its rendered content."}
-                                    </pre>
-                                </div>
-                            </section>
-                        )}
                         {result && (
                             <pre className="output">
                                 {result.url ? `Repository: ${result.url}\n` : ""}Local: {result.dir}
                             </pre>
                         )}
+                        </div>
+                        <div className="sidecol">
+                            {previewEntries.length > 0 ? (
+                                <section className="previewsec">
+                                    <h3>Preview — {previewEntries.length} files</h3>
+                                    <div className="preview">
+                                        <div className="ptree">
+                                            {previewEntries.map((e) => (
+                                                <button key={e.path}
+                                                    className={`pfile ${previewSel === e.path ? "active" : ""}`}
+                                                    onClick={() => openPreviewFile(e.path)}>
+                                                    <span>{e.path}</span>
+                                                    <em>{e.binary ? "bin" : `${e.size}b`}</em>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <pre className="pcontent">
+                                            {previewSel ? previewContent : "Select a file to inspect its rendered content."}
+                                        </pre>
+                                    </div>
+                                </section>
+                            ) : (
+                                <div className="previewempty">Preview shows the rendered project here.</div>
+                            )}
+                        </div>
+                        </div>
                     </>
                 )}
                 {view === "create" && selected && !manifest && !error && <div className="empty">Fetching template…</div>}

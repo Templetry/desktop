@@ -233,6 +233,28 @@ button.primary:hover:not(:disabled) { background: #e4b458; }
     background: var(--ink-2);
 }
 
+/* ── Adaptive workspace ────────────────────────────── */
+.workspace { display: flex; flex-direction: column; gap: 8px; }
+.formcol { min-width: 0; }
+.sidecol { min-width: 0; }
+.previewempty {
+    display: none;
+    color: #5b5f6e;
+    border: 1px dashed var(--thread);
+    border-radius: 8px;
+    padding: 40px 20px;
+    text-align: center;
+    font-size: 13px;
+}
+
+@media (min-width: 1240px) {
+    .workspace { flex-direction: row; gap: 28px; }
+    .formcol { width: 620px; flex-shrink: 0; }
+    .sidecol { flex: 1; position: sticky; top: 0; }
+    .sidecol .previewsec { margin-top: 24px; }
+    .previewempty { display: flex; align-items: center; justify-content: center; margin-top: 24px; min-height: 300px; }
+}
+
 /* ── Preview ───────────────────────────────────────── */
 .preview {
     display: flex;
@@ -281,8 +303,19 @@ button.primary:hover:not(:disabled) { background: #e4b458; }
     white-space: pre;
 }
 
+@media (min-width: 1240px) {
+    .preview { height: calc(100vh - 230px); }
+}
+
 /* ── Repos ─────────────────────────────────────────── */
 .repolist { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+@media (min-width: 1240px) {
+    .repolist {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(430px, 1fr));
+        gap: 10px;
+    }
+}
 .repo {
     display: flex;
     justify-content: space-between;
