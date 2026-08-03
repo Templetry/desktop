@@ -129,6 +129,22 @@ export namespace main {
 	        this.dir = source["dir"];
 	    }
 	}
+	export class PreviewEntry {
+	    path: string;
+	    binary: boolean;
+	    size: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new PreviewEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.binary = source["binary"];
+	        this.size = source["size"];
+	    }
+	}
 	export class Repo {
 	    name: string;
 	    fullName: string;

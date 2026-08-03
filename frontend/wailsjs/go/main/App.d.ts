@@ -34,6 +34,10 @@ export function OpenRepo(arg1:string):Promise<void>;
 
 export function PlanProject(arg1:string,arg2:Record<string, string>,arg3:Record<string, boolean>):Promise<string>;
 
+export function PreviewFile(arg1:string):Promise<string>;
+
+export function PreviewProject(arg1:string,arg2:Record<string, string>,arg3:Record<string, boolean>):Promise<Array<main.PreviewEntry>>;
+
 export function PublishProject(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<string>;
 
 export function SaveSettings(arg1:main.appConfig):Promise<void>;

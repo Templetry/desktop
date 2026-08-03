@@ -62,6 +62,14 @@ export function PlanProject(arg1, arg2, arg3) {
   return window['go']['main']['App']['PlanProject'](arg1, arg2, arg3);
 }
 
+export function PreviewFile(arg1) {
+  return window['go']['main']['App']['PreviewFile'](arg1);
+}
+
+export function PreviewProject(arg1, arg2, arg3) {
+  return window['go']['main']['App']['PreviewProject'](arg1, arg2, arg3);
+}
+
 export function PublishProject(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['PublishProject'](arg1, arg2, arg3, arg4);
 }

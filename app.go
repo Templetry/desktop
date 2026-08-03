@@ -26,6 +26,7 @@ type App struct {
 	token        string
 	auth         AuthStatus
 	authRestored bool
+	preview      *source.FileSet
 }
 
 type bundle struct {

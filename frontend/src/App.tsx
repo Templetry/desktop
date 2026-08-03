@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-    GetCatalog, GetTemplate, PlanProject, ChooseParentDir, GetLastParentDir,
+    GetCatalog, GetTemplate, PreviewProject, PreviewFile, ChooseParentDir, GetLastParentDir,
     GetAuthStatus, StartGitHubLogin, Logout, GetOwners, CreateFullProject,
     ListRepos, OpenRepo, CloneRepo, GetSettings, SaveSettings,
 } from "../wailsjs/go/main/App";
@@ -27,7 +27,9 @@ function App() {
     const [repoPrivate, setRepoPrivate] = useState(true);
     const [license, setLicense] = useState("");
     const [parentDir, setParentDir] = useState("");
-    const [output, setOutput] = useState("");
+    const [previewEntries, setPreviewEntries] = useState<any[]>([]);
+    const [previewSel, setPreviewSel] = useState("");
+    const [previewContent, setPreviewContent] = useState("");
     const [result, setResult] = useState<{ url: string; dir: string } | null>(null);
     const [error, setError] = useState("");
     const [busy, setBusy] = useState(false);
@@ -78,7 +80,8 @@ function App() {
     }, [auth.state]);
 
     const pick = async (ref: string) => {
-        setSelected(ref); setManifest(null); setOutput(""); setResult(null); setError(""); setBusy(true);
+        setSelected(ref); setManifest(null); setPreviewEntries([]); setPreviewSel(""); setPreviewContent("");
+        setResult(null); setError(""); setBusy(true);
         try {
             const m: Manifest = (await GetTemplate(ref)) as any;
             setManifest(m);
@@ -100,13 +103,19 @@ function App() {
     const targetPath = parentDir && repoName ? `${parentDir.replace(/[\\/]+$/, "")}\\${repoName}` : "";
 
     const preview = async () => {
-        setBusy(true); setError(""); setOutput(""); setResult(null);
-        try { setOutput(String(await PlanProject(selected, inputs, feats))); }
+        setBusy(true); setError(""); setResult(null); setPreviewSel(""); setPreviewContent("");
+        try { setPreviewEntries((await PreviewProject(selected, inputs, feats)) as any[]); }
         catch (e) { setError(String(e)); } finally { setBusy(false); }
     };
 
+    const openPreviewFile = async (path: string) => {
+        setPreviewSel(path);
+        try { setPreviewContent(String(await PreviewFile(path))); }
+        catch (e) { setPreviewContent(String(e)); }
+    };
+
     const create = async () => {
-        setBusy(true); setError(""); setOutput(""); setResult(null);
+        setBusy(true); setError(""); setResult(null);
         try {
             const desc = `Created with Templetry (${selected})`;
             const r: any = await CreateFullProject(selected, owner, repoName, desc, license, repoPrivate, parentDir, inputs, feats);
@@ -365,7 +374,7 @@ function App() {
                         </section>
 
                         <div className="actions">
-                            <button disabled={busy} onClick={preview}>Preview plan</button>
+                            <button disabled={busy} onClick={preview}>Preview</button>
                             <button disabled={busy || !repoName || !parentDir} className="primary" onClick={create}>
                                 {owner ? "Create repo & project" : "Create project"}
                             </button>
@@ -373,7 +382,26 @@ function App() {
 
                         {busy && <p className="hint">Working…</p>}
                         {error && <pre className="error">{error}</pre>}
-                        {output && <pre className="output">{output}</pre>}
+                        {previewEntries.length > 0 && (
+                            <section>
+                                <h3>Preview — {previewEntries.length} files</h3>
+                                <div className="preview">
+                                    <div className="ptree">
+                                        {previewEntries.map((e) => (
+                                            <button key={e.path}
+                                                className={`pfile ${previewSel === e.path ? "active" : ""}`}
+                                                onClick={() => openPreviewFile(e.path)}>
+                                                <span>{e.path}</span>
+                                                <em>{e.binary ? "bin" : `${e.size}b`}</em>
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <pre className="pcontent">
+                                        {previewSel ? previewContent : "Select a file to inspect its rendered content."}
+                                    </pre>
+                                </div>
+                            </section>
+                        )}
                         {result && (
                             <pre className="output">
                                 {result.url ? `Repository: ${result.url}\n` : ""}Local: {result.dir}
