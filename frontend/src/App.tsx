@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
     GetCatalog, GetTemplate, PlanProject, ChooseParentDir, GetLastParentDir,
     GetAuthStatus, StartGitHubLogin, Logout, GetOwners, CreateFullProject,
-    ListRepos, OpenRepo, CloneRepo,
+    ListRepos, OpenRepo, CloneRepo, GetSettings, SaveSettings,
 } from "../wailsjs/go/main/App";
 import "./App.css";
 
@@ -31,7 +31,9 @@ function App() {
     const [result, setResult] = useState<{ url: string; dir: string } | null>(null);
     const [error, setError] = useState("");
     const [busy, setBusy] = useState(false);
-    const [view, setView] = useState<"create" | "repos">("create");
+    const [view, setView] = useState<"create" | "repos" | "settings">("create");
+    const [settings, setSettings] = useState<any>({});
+    const [settingsMsg, setSettingsMsg] = useState("");
     const [repos, setRepos] = useState<any[]>([]);
     const [repoFilter, setRepoFilter] = useState("");
     const [ownerFilter, setOwnerFilter] = useState("");
@@ -47,7 +49,14 @@ function App() {
     useEffect(() => {
         GetCatalog().then((r: any) => setParents(r.parents ?? [])).catch((e: any) => setError(String(e)));
         GetAuthStatus().then(setAuth).catch(() => {});
-        GetLastParentDir().then((d: string) => d && setParentDir(d)).catch(() => {});
+        GetSettings().then((s: any) => {
+            setSettings(s ?? {});
+            const dir = s?.defaultParentDir || s?.lastParentDir;
+            if (dir) setParentDir(dir);
+            if (s?.defaultLicense) setLicense(s.defaultLicense);
+            if (typeof s?.defaultPrivate === "boolean") setRepoPrivate(s.defaultPrivate);
+        }).catch(() => {});
+        GetLastParentDir().catch(() => {});
     }, []);
 
     useEffect(() => {
@@ -58,7 +67,10 @@ function App() {
 
     useEffect(() => {
         if (auth.state === "logged_in") {
-            GetOwners().then((o: string[]) => { setOwners(o); if (!owner) setOwner(o[0] ?? ""); }).catch(() => {});
+            GetOwners().then((o: string[]) => {
+                setOwners(o);
+                if (!owner) setOwner(settings.defaultOwner && o.includes(settings.defaultOwner) ? settings.defaultOwner : o[0] ?? "");
+            }).catch(() => {});
         } else {
             setOwners([]);
             setOwner("");
@@ -115,6 +127,9 @@ function App() {
                         onClick={() => { setView("repos"); if (!repos.length) loadRepos(); }}>
                         My repos
                     </button>
+                    <button className={view === "settings" ? "active" : ""} onClick={() => setView("settings")}>
+                        Settings
+                    </button>
                 </div>
                 {view === "create" && parents.map((p) => (
                     <div key={p.key} className="parent">
@@ -153,6 +168,69 @@ function App() {
             </aside>
 
             <main>
+                {view === "settings" && (
+                    <>
+                        <header><h2>Profile &amp; settings</h2></header>
+                        <section>
+                            <h3>Profile</h3>
+                            {auth.state === "logged_in"
+                                ? <p>Signed in as <strong>@{auth.login}</strong></p>
+                                : <p className="hint">Not signed in.</p>}
+                        </section>
+                        <section>
+                            <h3>Defaults</h3>
+                            <div className="field">
+                                <span>Repositories folder</span>
+                                <input value={settings.defaultParentDir ?? ""} readOnly
+                                    placeholder="Where clones and new projects go…" />
+                                <button onClick={async () => {
+                                    const d = await ChooseParentDir();
+                                    if (d) setSettings({ ...settings, defaultParentDir: d });
+                                }}>Browse…</button>
+                            </div>
+                            <label className="field">
+                                <span>Default owner</span>
+                                <select value={settings.defaultOwner ?? ""}
+                                    onChange={(e) => setSettings({ ...settings, defaultOwner: e.target.value })}>
+                                    <option value="">(none)</option>
+                                    {owners.map((o) => <option key={o} value={o}>{o}</option>)}
+                                </select>
+                            </label>
+                            <label className="field">
+                                <span>Default license</span>
+                                <select value={settings.defaultLicense ?? ""}
+                                    onChange={(e) => setSettings({ ...settings, defaultLicense: e.target.value })}>
+                                    {LICENSES.map((l) => <option key={l} value={l}>{l === "" ? "(none)" : l}</option>)}
+                                </select>
+                            </label>
+                            <label className="feature">
+                                <input type="checkbox" checked={settings.defaultPrivate ?? true}
+                                    onChange={(e) => setSettings({ ...settings, defaultPrivate: e.target.checked })} />
+                                <span>New repositories private by default</span>
+                            </label>
+                        </section>
+                        <section>
+                            <h3>Catalog</h3>
+                            <label className="field">
+                                <span>Registry URL</span>
+                                <input value={settings.registryUrl ?? ""}
+                                    placeholder="(official Templetry catalog)"
+                                    onChange={(e) => setSettings({ ...settings, registryUrl: e.target.value })} />
+                            </label>
+                            <p className="hint">Cross-device sync of these settings via your GitHub account is planned.</p>
+                        </section>
+                        <div className="actions">
+                            <button className="primary" onClick={() => {
+                                SaveSettings(settings).then(() => {
+                                    setSettingsMsg("Saved.");
+                                    if (settings.defaultParentDir) setParentDir(settings.defaultParentDir);
+                                }).catch((e: any) => setError(String(e)));
+                            }}>Save settings</button>
+                        </div>
+                        {settingsMsg && <pre className="output">{settingsMsg}</pre>}
+                        {error && <pre className="error">{error}</pre>}
+                    </>
+                )}
                 {view === "repos" && (
                     <>
                         <header><h2>My repositories</h2></header>

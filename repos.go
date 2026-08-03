@@ -91,9 +91,9 @@ func (a *App) CloneRepo(cloneURL, name string) (string, error) {
 	if token == "" {
 		return "", fmt.Errorf("sign in first")
 	}
-	parent := loadConfig().LastParentDir
+	parent := effectiveParentDir()
 	if parent == "" {
-		return "", fmt.Errorf("create a project first so Templetry learns your projects folder, or set it in the create view")
+		return "", fmt.Errorf("set your default repositories folder in Settings first")
 	}
 	target := filepath.Join(parent, name)
 	if _, err := os.Stat(target); err == nil {

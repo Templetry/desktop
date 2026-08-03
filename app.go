@@ -49,7 +49,11 @@ func (a *App) GetCatalog() (*catalog.Registry, error) {
 	if a.reg != nil {
 		return a.reg, nil
 	}
-	resp, err := http.Get(catalog.DefaultRegistryURL)
+	registryURL := loadConfig().RegistryURL
+	if registryURL == "" {
+		registryURL = catalog.DefaultRegistryURL
+	}
+	resp, err := http.Get(registryURL)
 	if err != nil {
 		return nil, fmt.Errorf("fetching catalog: %w", err)
 	}

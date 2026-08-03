@@ -21,8 +21,28 @@ type CreatedProject struct {
 }
 
 type appConfig struct {
-	LastParentDir string `json:"lastParentDir"`
+	LastParentDir    string `json:"lastParentDir"`
+	DefaultParentDir string `json:"defaultParentDir"`
+	DefaultOwner     string `json:"defaultOwner"`
+	DefaultPrivate   bool   `json:"defaultPrivate"`
+	DefaultLicense   string `json:"defaultLicense"`
+	RegistryURL      string `json:"registryUrl"`
 }
+
+// effectiveParentDir prefers the configured default over the last-used one.
+func effectiveParentDir() string {
+	c := loadConfig()
+	if c.DefaultParentDir != "" {
+		return c.DefaultParentDir
+	}
+	return c.LastParentDir
+}
+
+// GetSettings returns the persisted app settings.
+func (a *App) GetSettings() appConfig { return loadConfig() }
+
+// SaveSettings persists the app settings.
+func (a *App) SaveSettings(c appConfig) { saveConfig(c) }
 
 func configFile() string {
 	dir, err := os.UserConfigDir()
@@ -59,7 +79,7 @@ func (a *App) GetLastParentDir() string {
 func (a *App) ChooseParentDir() (string, error) {
 	return runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
 		Title:            "Choose where to create the project folder",
-		DefaultDirectory: loadConfig().LastParentDir,
+		DefaultDirectory: effectiveParentDir(),
 	})
 }
 
@@ -187,6 +207,8 @@ func (a *App) CreateFullProject(ref, owner, name, description, license string, p
 		}
 	}
 
-	saveConfig(appConfig{LastParentDir: parentDir})
+	c := loadConfig()
+	c.LastParentDir = parentDir
+	saveConfig(c)
 	return CreatedProject{URL: htmlURL, Dir: target}, nil
 }

@@ -38,6 +38,14 @@ export function GetTemplate(arg1) {
   return window['go']['main']['App']['GetTemplate'](arg1);
 }
 
+export function GetSettings() {
+  return window['go']['main']['App']['GetSettings']();
+}
+
+export function SaveSettings(arg1) {
+  return window['go']['main']['App']['SaveSettings'](arg1);
+}
+
 export function ListRepos() {
   return window['go']['main']['App']['ListRepos']();
 }
