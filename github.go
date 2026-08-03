@@ -18,7 +18,7 @@ import (
 
 // githubClientID is the public OAuth App client id (device flow enabled).
 // Overridable via TEMPLETRY_GH_CLIENT_ID for development.
-const githubClientID = ""
+const githubClientID = "Ov23lisEA5jd9kGIHJLW"
 
 const (
 	keyringService = "Templetry"
