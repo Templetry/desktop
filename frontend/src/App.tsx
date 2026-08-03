@@ -115,10 +115,34 @@ function App() {
     };
 
     return (
-        <div id="app">
+        <div id="shell">
+            <header className="topbar">
+                <div className="brand">
+                    <h1>Templetry</h1>
+                    <span className="tag">Project scaffolding for every platform</span>
+                </div>
+                <div className="session">
+                    <button className={view === "settings" ? "active" : ""} onClick={() => setView("settings")}
+                        title="Profile & settings">⚙ Settings</button>
+                    {auth.state === "logged_in" && (
+                        <>
+                            <span className="who">@{auth.login}</span>
+                            <button onClick={() => Logout().then(() => setAuth({ state: "logged_out" }))}>Sign out</button>
+                        </>
+                    )}
+                    {auth.state === "pending" && (
+                        <span className="pendingchip">Code: <strong>{auth.userCode}</strong></span>
+                    )}
+                    {(auth.state === "logged_out" || auth.state === "error") && (
+                        <button className="primary"
+                            onClick={() => StartGitHubLogin().then(setAuth).catch((e: any) => setError(String(e)))}>
+                            Sign in with GitHub
+                        </button>
+                    )}
+                </div>
+            </header>
+            <div id="app">
             <aside>
-                <h1>Templetry</h1>
-                <p className="tag">Project scaffolding for every platform</p>
                 <div className="nav">
                     <button className={view === "create" ? "active" : ""} onClick={() => setView("create")}>
                         New project
@@ -126,9 +150,6 @@ function App() {
                     <button className={view === "repos" ? "active" : ""} disabled={auth.state !== "logged_in"}
                         onClick={() => { setView("repos"); if (!repos.length) loadRepos(); }}>
                         My repos
-                    </button>
-                    <button className={view === "settings" ? "active" : ""} onClick={() => setView("settings")}>
-                        Settings
                     </button>
                 </div>
                 {view === "create" && parents.map((p) => (
@@ -147,24 +168,6 @@ function App() {
                         })}
                     </div>
                 ))}
-                <div className="authbox">
-                    {auth.state === "logged_in" && (
-                        <>
-                            <span className="who">@{auth.login}</span>
-                            <button onClick={() => Logout().then(() => setAuth({ state: "logged_out" }))}>Sign out</button>
-                        </>
-                    )}
-                    {auth.state === "pending" && (
-                        <div className="pending"><span>Enter this code on GitHub:</span><strong>{auth.userCode}</strong></div>
-                    )}
-                    {(auth.state === "logged_out" || auth.state === "error") && (
-                        <button className="primary"
-                            onClick={() => StartGitHubLogin().then(setAuth).catch((e: any) => setError(String(e)))}>
-                            Sign in with GitHub
-                        </button>
-                    )}
-                    {auth.error && <span className="autherr">{auth.error}</span>}
-                </div>
             </aside>
 
             <main>
@@ -380,6 +383,7 @@ function App() {
                 )}
                 {view === "create" && selected && !manifest && !error && <div className="empty">Fetching template…</div>}
             </main>
+            </div>
         </div>
     );
 }

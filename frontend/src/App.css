@@ -29,13 +29,60 @@ select option {
     color: var(--linen);
 }
 
-#app {
+#shell {
     display: flex;
+    flex-direction: column;
     height: 100vh;
     font-family: "Segoe UI", system-ui, sans-serif;
     background: var(--ink);
     color: var(--linen);
     text-align: left;
+}
+
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    height: 58px;
+    flex-shrink: 0;
+    background: var(--ink-2);
+    border-bottom: 2px solid var(--brass);
+}
+.brand { display: flex; align-items: baseline; gap: 12px; }
+.brand h1 {
+    font-size: 20px;
+    font-weight: 650;
+    letter-spacing: 0.4px;
+    padding: 6px 10px;
+    background: repeating-linear-gradient(
+        90deg,
+        transparent 0 9px,
+        rgba(217, 164, 65, 0.10) 9px 10px
+    );
+}
+.brand .tag { font-size: 12px; color: var(--linen-dim); }
+.session { display: flex; align-items: center; gap: 10px; }
+.session .who { font-size: 14px; color: var(--brass); }
+.session button.active { border-color: var(--brass); color: var(--brass); }
+.pendingchip {
+    font-size: 12.5px;
+    color: var(--linen-dim);
+    padding: 6px 10px;
+    border: 1px dashed var(--thread);
+    border-radius: 6px;
+}
+.pendingchip strong {
+    color: var(--linen);
+    font-family: Consolas, monospace;
+    letter-spacing: 2px;
+    margin-left: 4px;
+}
+
+#app {
+    display: flex;
+    flex: 1;
+    min-height: 0;
 }
 
 /* ── Sidebar: the loom ─────────────────────────────── */
@@ -48,19 +95,6 @@ aside {
     flex-shrink: 0;
 }
 
-aside h1 {
-    font-size: 24px;
-    font-weight: 650;
-    letter-spacing: 0.4px;
-    padding: 10px 8px 12px;
-    background: repeating-linear-gradient(
-        90deg,
-        transparent 0 9px,
-        rgba(217, 164, 65, 0.10) 9px 10px
-    );
-    border-bottom: 2px solid var(--brass);
-}
-aside .tag { font-size: 12px; color: var(--linen-dim); margin: 8px 0 18px; padding: 0 8px; }
 
 .parent h2 {
     font-size: 11.5px;
@@ -191,7 +225,7 @@ button.primary:hover:not(:disabled) { background: #e4b458; }
 .hint { font-size: 13px; color: var(--linen-dim); margin-top: 6px; }
 
 /* ── Nav ───────────────────────────────────────────── */
-.nav { display: flex; gap: 6px; margin: 16px 0; }
+.nav { display: flex; gap: 6px; margin: 0 0 16px; }
 .nav button { flex: 1; padding: 7px 0; font-size: 13px; }
 .nav button.active {
     border-color: var(--brass);
