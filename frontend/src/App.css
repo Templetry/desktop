@@ -1,4 +1,5 @@
 :root {
+    color-scheme: dark;
     --ink: #15171e;
     --ink-2: #1b1e27;
     --surface: #20242f;
@@ -12,6 +13,21 @@
 }
 
 * { box-sizing: border-box; margin: 0; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--ink); }
+::-webkit-scrollbar-thumb {
+    background: var(--thread);
+    border-radius: 5px;
+    border: 2px solid var(--ink);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--brass-deep); }
+::-webkit-scrollbar-corner { background: var(--ink); }
+
+select option {
+    background: var(--ink-2);
+    color: var(--linen);
+}
 
 #app {
     display: flex;
