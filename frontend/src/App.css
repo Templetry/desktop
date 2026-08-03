@@ -116,3 +116,24 @@ button.primary:hover:not(:disabled) { background: #5a6892; }
 .authbox .autherr { font-size: 11px; color: #ff8484; }
 .publish { border-top: 1px solid #2a2e3a; padding-top: 18px; }
 .hint { font-size: 13px; color: #8a8fa3; }
+
+.nav { display: flex; gap: 6px; margin-bottom: 16px; }
+.nav button { flex: 1; padding: 7px 0; font-size: 13px; }
+.nav button.active { background: #2d3346; border-color: #4a5578; }
+
+.repolist { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+.repo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    background: #1b1e27;
+    border: 1px solid #2a2e3a;
+    border-radius: 8px;
+}
+.repo.archived { opacity: 0.55; }
+.repoinfo { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.repoinfo .meta { font-size: 11.5px; color: #8a8fa3; }
+.repoinfo .desc { font-size: 12.5px; color: #b9bdcc; }
+.repoactions { display: flex; gap: 8px; flex-shrink: 0; }

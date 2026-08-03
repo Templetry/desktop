@@ -21,6 +21,12 @@ export function GetOwners():Promise<string[]>;
 
 export function GetTemplate(arg1:string):Promise<manifest.Manifest>;
 
+export function ListRepos():Promise<any[]>;
+
+export function CloneRepo(arg1:string,arg2:string):Promise<string>;
+
+export function OpenRepo(arg1:string):Promise<void>;
+
 export function Logout():Promise<void>;
 
 export function PlanProject(arg1:string,arg2:Record<string, string>,arg3:Record<string, boolean>):Promise<string>;

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
     GetCatalog, GetTemplate, PlanProject, ChooseParentDir, GetLastParentDir,
     GetAuthStatus, StartGitHubLogin, Logout, GetOwners, CreateFullProject,
+    ListRepos, OpenRepo, CloneRepo,
 } from "../wailsjs/go/main/App";
 import "./App.css";
 
@@ -30,6 +31,18 @@ function App() {
     const [result, setResult] = useState<{ url: string; dir: string } | null>(null);
     const [error, setError] = useState("");
     const [busy, setBusy] = useState(false);
+    const [view, setView] = useState<"create" | "repos">("create");
+    const [repos, setRepos] = useState<any[]>([]);
+    const [repoFilter, setRepoFilter] = useState("");
+    const [ownerFilter, setOwnerFilter] = useState("");
+    const [repoMsg, setRepoMsg] = useState("");
+
+    const loadRepos = () => {
+        setBusy(true);
+        ListRepos().then((r: any[]) => setRepos(r ?? []))
+            .catch((e: any) => setError(String(e)))
+            .finally(() => setBusy(false));
+    };
 
     useEffect(() => {
         GetCatalog().then((r: any) => setParents(r.parents ?? [])).catch((e: any) => setError(String(e)));
@@ -94,7 +107,16 @@ function App() {
             <aside>
                 <h1>Templetry</h1>
                 <p className="tag">Project scaffolding for every platform</p>
-                {parents.map((p) => (
+                <div className="nav">
+                    <button className={view === "create" ? "active" : ""} onClick={() => setView("create")}>
+                        New project
+                    </button>
+                    <button className={view === "repos" ? "active" : ""} disabled={auth.state !== "logged_in"}
+                        onClick={() => { setView("repos"); if (!repos.length) loadRepos(); }}>
+                        My repos
+                    </button>
+                </div>
+                {view === "create" && parents.map((p) => (
                     <div key={p.key} className="parent">
                         <h2>{p.label ?? p.key}</h2>
                         {p.forms.map((f) => {
@@ -131,8 +153,56 @@ function App() {
             </aside>
 
             <main>
-                {!selected && <div className="empty">Pick a template form to start.</div>}
-                {selected && manifest && (
+                {view === "repos" && (
+                    <>
+                        <header><h2>My repositories</h2></header>
+                        <div className="outrow" style={{ marginTop: 16 }}>
+                            <input placeholder="Search…" value={repoFilter}
+                                onChange={(e) => setRepoFilter(e.target.value)} />
+                            <select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}>
+                                <option value="">All owners</option>
+                                {[...new Set(repos.map((r) => r.owner))].map((o) => (
+                                    <option key={o} value={o}>{o}</option>
+                                ))}
+                            </select>
+                            <button onClick={loadRepos} disabled={busy}>Refresh</button>
+                        </div>
+                        {repoMsg && <pre className="output">{repoMsg}</pre>}
+                        {error && <pre className="error">{error}</pre>}
+                        <div className="repolist">
+                            {repos
+                                .filter((r) => !ownerFilter || r.owner === ownerFilter)
+                                .filter((r) => !repoFilter || r.fullName.toLowerCase().includes(repoFilter.toLowerCase()))
+                                .map((r) => (
+                                    <div key={r.fullName} className={`repo ${r.archived ? "archived" : ""}`}>
+                                        <div className="repoinfo">
+                                            <strong>{r.fullName}</strong>
+                                            <span className="meta">
+                                                {r.private ? "private" : "public"}
+                                                {r.language ? ` · ${r.language}` : ""}
+                                                {r.archived ? " · archived" : ""}
+                                                {` · ${String(r.updatedAt).slice(0, 10)}`}
+                                            </span>
+                                            {r.description && <span className="desc">{r.description}</span>}
+                                        </div>
+                                        <div className="repoactions">
+                                            <button onClick={() => OpenRepo(r.htmlUrl)}>Open</button>
+                                            <button disabled={busy} onClick={() => {
+                                                setBusy(true); setError(""); setRepoMsg("");
+                                                CloneRepo(r.cloneUrl, r.name)
+                                                    .then((d: string) => setRepoMsg(`Cloned: ${d}`))
+                                                    .catch((e: any) => setError(String(e)))
+                                                    .finally(() => setBusy(false));
+                                            }}>Clone</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            {!repos.length && !busy && <div className="empty">No repositories loaded.</div>}
+                        </div>
+                    </>
+                )}
+                {view === "create" && !selected && <div className="empty">Pick a template form to start.</div>}
+                {view === "create" && selected && manifest && (
                     <>
                         <header>
                             <h2>{manifest.name}</h2>
@@ -230,7 +300,7 @@ function App() {
                         )}
                     </>
                 )}
-                {selected && !manifest && !error && <div className="empty">Fetching template…</div>}
+                {view === "create" && selected && !manifest && !error && <div className="empty">Fetching template…</div>}
             </main>
         </div>
     );

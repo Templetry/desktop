@@ -38,6 +38,18 @@ export function GetTemplate(arg1) {
   return window['go']['main']['App']['GetTemplate'](arg1);
 }
 
+export function ListRepos() {
+  return window['go']['main']['App']['ListRepos']();
+}
+
+export function CloneRepo(arg1, arg2) {
+  return window['go']['main']['App']['CloneRepo'](arg1, arg2);
+}
+
+export function OpenRepo(arg1) {
+  return window['go']['main']['App']['OpenRepo'](arg1);
+}
+
 export function Logout() {
   return window['go']['main']['App']['Logout']();
 }
