@@ -34,8 +34,6 @@ select option {
     display: flex;
     flex-direction: column;
     height: 100%;
-    min-height: 640px;
-    min-width: 980px;
     font-family: "Segoe UI", system-ui, sans-serif;
     background: var(--ink);
     color: var(--linen);
