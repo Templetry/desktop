@@ -64,6 +64,31 @@ function App() {
         (document.body.style as any).zoom = s?.uiScale || "1";
     };
 
+    const switchView = (v: "create" | "repos" | "settings") => {
+        setView(v);
+        setError("");
+        setSettingsMsg("");
+        setRepoMsg("");
+    };
+
+    useEffect(() => {
+        if (!settingsMsg) return;
+        const t = setTimeout(() => setSettingsMsg(""), 5000);
+        return () => clearTimeout(t);
+    }, [settingsMsg]);
+
+    useEffect(() => {
+        if (!repoMsg) return;
+        const t = setTimeout(() => setRepoMsg(""), 5000);
+        return () => clearTimeout(t);
+    }, [repoMsg]);
+
+    useEffect(() => {
+        if (!error) return;
+        const t = setTimeout(() => setError(""), 8000);
+        return () => clearTimeout(t);
+    }, [error]);
+
     const loadCatalogs = () => {
         GetCatalogs().then((cs: any[]) => setCatalogs(cs ?? [])).catch((e: any) => setError(String(e)));
     };
@@ -156,7 +181,7 @@ function App() {
                     <span className="tag">Project scaffolding for every platform</span>
                 </div>
                 <div className="session">
-                    <button className={view === "settings" ? "active" : ""} onClick={() => setView("settings")}
+                    <button className={view === "settings" ? "active" : ""} onClick={() => switchView("settings")}
                         title="Profile & settings">⚙ Settings</button>
                     {auth.state === "logged_in" && (
                         <>
@@ -185,19 +210,19 @@ function App() {
                 {collapsed ? (
                     <div className="rail">
                         <button className={view === "create" ? "active" : ""} title="New project"
-                            onClick={() => setView("create")}>+</button>
+                            onClick={() => switchView("create")}>+</button>
                         <button className={view === "repos" ? "active" : ""} title="My repos"
                             disabled={auth.state !== "logged_in"}
-                            onClick={() => { setView("repos"); if (!repos.length) loadRepos(); }}>▤</button>
+                            onClick={() => { switchView("repos"); if (!repos.length) loadRepos(); }}>▤</button>
                     </div>
                 ) : (
                     <>
                         <div className="nav">
-                            <button className={view === "create" ? "active" : ""} onClick={() => setView("create")}>
+                            <button className={view === "create" ? "active" : ""} onClick={() => switchView("create")}>
                                 New project
                             </button>
                             <button className={view === "repos" ? "active" : ""} disabled={auth.state !== "logged_in"}
-                                onClick={() => { setView("repos"); if (!repos.length) loadRepos(); }}>
+                                onClick={() => { switchView("repos"); if (!repos.length) loadRepos(); }}>
                                 My repos
                             </button>
                         </div>
