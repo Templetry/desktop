@@ -134,12 +134,19 @@ func (a *App) CheckUpdates() (UpdateInfo, error) {
 	if errA == nil {
 		out.AppLatest, out.AppURL = appTag, appURL
 		cur := norm(version)
-		out.AppUpdate = cur != "dev" && norm(appTag) != cur
+		// Dev/local builds never flag updates; /releases/latest already
+		// excludes drafts and prereleases by contract.
+		if cur != "dev" && !strings.HasSuffix(cur, "-local") && !strings.HasSuffix(cur, "-dev") {
+			out.AppUpdate = norm(appTag) != cur
+		}
 	}
 	if errB == nil {
 		out.EngineLatest, out.EngineURL = engTag, engURL
 		cur := norm(engineVersion())
-		out.EngineUpdate = cur != "unknown" && norm(engTag) != cur
+		// Skip Go pseudo-versions (branch builds) — only compare real tags.
+		if cur != "unknown" && !strings.Contains(cur, "-0.20") {
+			out.EngineUpdate = norm(engTag) != cur
+		}
 	}
 	return out, nil
 }
