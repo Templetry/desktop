@@ -31,6 +31,7 @@ type App struct {
 	updDir     string
 	updFiles   *source.FileSet
 	updEntries []UpdateEntry
+	updMerged  map[string][]byte
 }
 
 type bundle struct {

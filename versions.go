@@ -3,9 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"os/exec"
 	"runtime/debug"
 	"strings"
+	"time"
+
+	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // version is stamped by the release build via -ldflags "-X main.version=...".
@@ -64,6 +70,58 @@ func latestRelease(repo string) (tag, url string, err error) {
 }
 
 func norm(v string) string { return strings.TrimPrefix(strings.TrimSpace(v), "v") }
+
+// InstallAppUpdate downloads the latest Windows installer from releases,
+// launches it and quits the app so the installer can replace it.
+func (a *App) InstallAppUpdate() (string, error) {
+	resp, err := http.Get("https://api.github.com/repos/Templetry/desktop/releases/latest")
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	var rel struct {
+		TagName string `json:"tag_name"`
+		Assets  []struct {
+			Name string `json:"name"`
+			URL  string `json:"browser_download_url"`
+		} `json:"assets"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
+		return "", err
+	}
+	url := ""
+	for _, as := range rel.Assets {
+		if strings.HasSuffix(as.Name, "-windows-installer.exe") {
+			url = as.URL
+			break
+		}
+	}
+	if url == "" {
+		return "", fmt.Errorf("the latest release has no Windows installer asset")
+	}
+	dl, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer dl.Body.Close()
+	tmp, err := os.CreateTemp("", "Templetry-update-*.exe")
+	if err != nil {
+		return "", err
+	}
+	if _, err := io.Copy(tmp, dl.Body); err != nil {
+		tmp.Close()
+		return "", err
+	}
+	tmp.Close()
+	if err := exec.Command(tmp.Name()).Start(); err != nil {
+		return "", fmt.Errorf("could not launch the installer: %w", err)
+	}
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		wruntime.Quit(a.ctx)
+	}()
+	return rel.TagName, nil
+}
 
 // CheckUpdates compares the running versions against the latest releases.
 func (a *App) CheckUpdates() (UpdateInfo, error) {

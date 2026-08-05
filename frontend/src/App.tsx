@@ -4,7 +4,7 @@ import {
     GetAuthStatus, StartGitHubLogin, Logout, GetOwners, CreateFullProject,
     ListRepos, OpenRepo, CloneRepo, GetSettings, SaveSettings, ExportSettings, ImportSettings,
     ScanProjects, OpenFolder, GetVersions, CheckUpdates, CheckDrift,
-    PreviewUpdate, UpdateFileContent, ApplyUpdate,
+    PreviewUpdate, UpdateFileContent, ApplyUpdate, InstallAppUpdate,
 } from "../wailsjs/go/main/App";
 import "./App.css";
 
@@ -530,6 +530,15 @@ function App() {
                             </p>
                             <div className="actions" style={{ marginTop: 14 }}>
                                 <button onClick={() => checkUpdates(true)}>Check for updates</button>
+                                {updates?.appUpdate && (
+                                    <button className="primary" disabled={busy} onClick={() => {
+                                        setBusy(true);
+                                        InstallAppUpdate()
+                                            .then((tag: string) => setUpdMsg(`Installer for ${tag} launched - the app will close now.`))
+                                            .catch((e: any) => setError(String(e)))
+                                            .finally(() => setBusy(false));
+                                    }}>Install {updates.appLatest}</button>
+                                )}
                             </div>
                             {updMsg && <pre className="output">{updMsg}</pre>}
                         </section>

@@ -37,6 +37,8 @@ export function GetVersions():Promise<main.VersionInfo>;
 
 export function ImportSettings():Promise<main.appConfig>;
 
+export function InstallAppUpdate():Promise<string>;
+
 export function ListRepos():Promise<Array<main.Repo>>;
 
 export function Logout():Promise<void>;

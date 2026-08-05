@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -95,35 +96,111 @@ func (a *App) PreviewUpdate(dir string) (UpdatePreview, error) {
 		return none, err
 	}
 
+	// Base render: the template at the recorded commit, same inputs — the
+	// third band for real merges when both sides touched a file.
+	var baseRendered *source.FileSet
+	if ans.Template.Commit != "" {
+		if baseFiles, err := source.FetchGitHubTarball(repo, ans.Template.Commit, path); err == nil {
+			if bmf := baseFiles.Get("template.yml"); bmf != nil {
+				if bm, err := manifest.Load(bmf.Data); err == nil {
+					if bp, err := planner.Build(bm, manifest.Inputs{Variables: ans.Variables, Features: ans.Features}, baseFiles); err == nil {
+						baseRendered, _ = render.Apply(bp, baseFiles)
+					}
+				}
+			}
+		}
+	}
+
 	out := UpdatePreview{
 		Dir: dir, Template: ans.Template.Name,
 		OldCommit: ans.Template.Commit, NewCommit: p.SourceCommit,
 	}
+	merged := map[string][]byte{}
 	for _, rp := range rendered.Paths() {
-		newData := rendered.Get(rp).Data
+		newData := normEOL(rendered.Get(rp).Data)
 		current, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(rp)))
-		switch {
-		case err != nil:
+		if err != nil {
 			out.Entries = append(out.Entries, UpdateEntry{Path: rp, Status: "added"})
-		case !bytes.Equal(normEOL(current), normEOL(newData)):
-			out.Entries = append(out.Entries, UpdateEntry{Path: rp, Status: "modified"})
-		default:
-			out.Unchanged++
+			continue
 		}
+		cur := normEOL(current)
+		if bytes.Equal(cur, newData) {
+			out.Unchanged++
+			continue
+		}
+		var base []byte
+		if baseRendered != nil {
+			if bf := baseRendered.Get(rp); bf != nil {
+				base = normEOL(bf.Data)
+			}
+		}
+		if base != nil && bytes.Equal(cur, base) {
+			// User never touched it: safe overwrite.
+			out.Entries = append(out.Entries, UpdateEntry{Path: rp, Status: "modified"})
+			continue
+		}
+		// Both sides moved (or no base known): real three-way merge.
+		m, conflicts, err := gitMergeFile(cur, base, newData)
+		if err != nil {
+			out.Entries = append(out.Entries, UpdateEntry{Path: rp, Status: "conflict"})
+			continue
+		}
+		merged[rp] = m
+		status := "merged"
+		if conflicts > 0 {
+			status = "conflict"
+		}
+		out.Entries = append(out.Entries, UpdateEntry{Path: rp, Status: status})
 	}
 
 	a.mu.Lock()
 	a.updDir = dir
 	a.updFiles = rendered
 	a.updEntries = out.Entries
+	a.updMerged = merged
 	a.mu.Unlock()
 	return out, nil
+}
+
+// gitMergeFile three-way merges via git merge-file; returns merged content
+// and the number of conflicts.
+func gitMergeFile(ours, base, theirs []byte) ([]byte, int, error) {
+	tmp, err := os.MkdirTemp("", "templetry-merge")
+	if err != nil {
+		return nil, 0, err
+	}
+	defer os.RemoveAll(tmp)
+	o, b, t := filepath.Join(tmp, "ours"), filepath.Join(tmp, "base"), filepath.Join(tmp, "theirs")
+	if err := os.WriteFile(o, ours, 0o644); err != nil {
+		return nil, 0, err
+	}
+	if err := os.WriteFile(b, base, 0o644); err != nil {
+		return nil, 0, err
+	}
+	if err := os.WriteFile(t, theirs, 0o644); err != nil {
+		return nil, 0, err
+	}
+	cmd := exec.Command("git", "merge-file", "-p", "-L", "yours", "-L", "template-old", "-L", "template-new", o, b, t)
+	out, err := cmd.Output()
+	conflicts := 0
+	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok && ee.ExitCode() > 0 {
+			conflicts = ee.ExitCode()
+		} else {
+			return nil, 0, err
+		}
+	}
+	return out, conflicts, nil
 }
 
 // UpdateFileContent returns the NEW rendered content of one previewed file.
 func (a *App) UpdateFileContent(path string) (string, error) {
 	a.mu.Lock()
 	files := a.updFiles
+	if m, ok := a.updMerged[path]; ok {
+		a.mu.Unlock()
+		return string(m), nil
+	}
 	a.mu.Unlock()
 	if files == nil {
 		return "", fmt.Errorf("run an update preview first")
@@ -145,23 +222,27 @@ func (a *App) UpdateFileContent(path string) (string, error) {
 // It never deletes anything; review the result with git.
 func (a *App) ApplyUpdate() (int, error) {
 	a.mu.Lock()
-	dir, files, entries := a.updDir, a.updFiles, a.updEntries
-	a.updDir, a.updFiles, a.updEntries = "", nil, nil
+	dir, files, entries, mergedData := a.updDir, a.updFiles, a.updEntries, a.updMerged
+	a.updDir, a.updFiles, a.updEntries, a.updMerged = "", nil, nil, nil
 	a.mu.Unlock()
 	if files == nil || dir == "" {
 		return 0, fmt.Errorf("run an update preview first")
 	}
 	written := 0
 	for _, e := range entries {
-		f := files.Get(e.Path)
-		if f == nil {
+		data := []byte(nil)
+		if m, ok := mergedData[e.Path]; ok {
+			data = m
+		} else if f := files.Get(e.Path); f != nil {
+			data = f.Data
+		} else {
 			continue
 		}
 		full := filepath.Join(dir, filepath.FromSlash(e.Path))
 		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 			return written, err
 		}
-		if err := os.WriteFile(full, f.Data, 0o644); err != nil {
+		if err := os.WriteFile(full, data, 0o644); err != nil {
 			return written, err
 		}
 		written++

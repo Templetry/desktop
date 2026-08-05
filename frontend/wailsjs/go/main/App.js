@@ -70,6 +70,10 @@ export function ImportSettings() {
   return window['go']['main']['App']['ImportSettings']();
 }
 
+export function InstallAppUpdate() {
+  return window['go']['main']['App']['InstallAppUpdate']();
+}
+
 export function ListRepos() {
   return window['go']['main']['App']['ListRepos']();
 }
