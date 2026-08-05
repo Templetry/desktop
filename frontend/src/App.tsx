@@ -201,6 +201,18 @@ function App() {
                                 My repos
                             </button>
                         </div>
+                        {view === "settings" && (
+                            <div className="parent">
+                                <h2>Sections</h2>
+                                {["Profile", "Defaults", "Appearance", "Catalogs"].map((s) => (
+                                    <button key={s} className="form"
+                                        onClick={() => document.getElementById("sec-" + s.toLowerCase())
+                                            ?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+                                        <span>{s}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                         {view === "repos" && (
                             <div className="parent">
                                 <h2>Owners<em>{repos.length}</em></h2>
@@ -257,13 +269,13 @@ function App() {
                     <>
                         <header><h2>Profile &amp; settings</h2></header>
                         <div className="settingsgrid">
-                        <section className="span2">
+                        <section className="span2" id="sec-profile">
                             <h3>Profile</h3>
                             {auth.state === "logged_in"
                                 ? <p>Signed in as <strong>@{auth.login}</strong></p>
                                 : <p className="hint">Not signed in.</p>}
                         </section>
-                        <section>
+                        <section id="sec-defaults">
                             <h3>Defaults</h3>
                             <div className="field">
                                 <span>Repositories folder</span>
@@ -295,7 +307,7 @@ function App() {
                                 <span>New repositories private by default</span>
                             </label>
                         </section>
-                        <section>
+                        <section id="sec-appearance">
                             <h3>Appearance</h3>
                             <label className="field">
                                 <span>Theme</span>
@@ -338,7 +350,7 @@ function App() {
                             </label>
                             <p className="hint">Changes apply live; Save makes them permanent.</p>
                         </section>
-                        <section className="span2">
+                        <section className="span2" id="sec-catalogs">
                             <h3>Catalogs</h3>
                             <div className="catrow">
                                 <span className="catname">Templetry <em className="badge">official</em></span>
