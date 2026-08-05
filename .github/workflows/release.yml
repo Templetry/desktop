@@ -21,15 +21,21 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
       - name: Install NSIS
-        run: choco install nsis -y --no-progress
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          Add-Content $env:GITHUB_PATH "C:\Program Files (x86)\NSIS"
       - name: Build app and installer
         run: wails build -nsis -ldflags "-X main.version=${{ github.ref_name }}"
       - name: Rename artifacts
         shell: pwsh
         run: |
+          Write-Host "build/bin contents:"
+          Get-ChildItem "build/bin" | ForEach-Object { Write-Host "  $($_.Name)" }
           Copy-Item "build/bin/Templetry.exe" "build/bin/Templetry-${{ github.ref_name }}-windows-amd64.exe"
           $installer = Get-ChildItem "build/bin" -Filter "*installer*.exe" | Select-Object -First 1
           if ($installer) { Copy-Item $installer.FullName "build/bin/Templetry-${{ github.ref_name }}-windows-installer.exe" }
+          else { Write-Host "no installer artifact found" }
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
