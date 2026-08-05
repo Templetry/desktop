@@ -33,6 +33,7 @@ type bundle struct {
 	files    *source.FileSet
 	manifest *manifest.Manifest
 	source   string
+	commit   string
 }
 
 func NewApp() *App {
@@ -135,10 +136,15 @@ func (a *App) fetchBundle(cat, ref string) (*bundle, error) {
 	if err != nil {
 		return nil, err
 	}
+	commit := ""
+	if sha, err := source.ResolveGitHubRef(parent.Repo, parent.Ref, a.token); err == nil {
+		commit = sha
+	}
 	b := &bundle{
 		files:    files,
 		manifest: m,
 		source:   fmt.Sprintf("github.com/%s@%s/%s", parent.Repo, parent.Ref, form.Path),
+		commit:   commit,
 	}
 	a.cache[key] = b
 	return b, nil

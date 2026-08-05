@@ -3,6 +3,8 @@
 import {main} from '../models';
 import {manifest} from '../models';
 
+export function CheckDrift():Promise<Array<main.Drift>>;
+
 export function CheckUpdates():Promise<main.UpdateInfo>;
 
 export function ChooseOutputDir():Promise<string>;

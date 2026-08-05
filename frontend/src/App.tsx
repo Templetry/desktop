@@ -3,7 +3,7 @@ import {
     GetCatalogs, GetTemplate, PreviewProject, PreviewFile, ChooseParentDir, GetLastParentDir,
     GetAuthStatus, StartGitHubLogin, Logout, GetOwners, CreateFullProject,
     ListRepos, OpenRepo, CloneRepo, GetSettings, SaveSettings, ExportSettings, ImportSettings,
-    ScanProjects, OpenFolder, GetVersions, CheckUpdates,
+    ScanProjects, OpenFolder, GetVersions, CheckUpdates, CheckDrift,
 } from "../wailsjs/go/main/App";
 import "./App.css";
 
@@ -66,11 +66,16 @@ function App() {
         }).catch((e: any) => { if (announce) setError(String(e)); });
     };
 
+    const [drifts, setDrifts] = useState<Record<string, string>>({});
+
     const loadProjects = () => {
         setBusy(true);
         ScanProjects().then((p: any[]) => setProjects(p ?? []))
             .catch((e: any) => setError(String(e)))
             .finally(() => setBusy(false));
+        CheckDrift().then((list: any[]) =>
+            setDrifts(Object.fromEntries((list ?? []).map((d: any) => [d.dir, d.latest]))))
+            .catch(() => {});
     };
 
     const loadRepos = () => {
@@ -523,7 +528,15 @@ function App() {
                                 .map((p) => (
                                     <div key={p.dir} className="repo">
                                         <div className="repoinfo">
-                                            <strong>{p.name}</strong>
+                                            <strong>
+                                                {p.name}
+                                                {drifts[p.dir] && (
+                                                    <em className="driftchip"
+                                                        title={`Template moved: ${(p.commit ?? "").slice(0, 7)} → ${drifts[p.dir].slice(0, 7)}`}>
+                                                        template updated
+                                                    </em>
+                                                )}
+                                            </strong>
                                             <span className="meta">{p.template} · {p.source}</span>
                                             <span className="desc">
                                                 {Object.entries(p.variables ?? {}).map(([k, v]) => `${k}=${v}`).join(" · ")}

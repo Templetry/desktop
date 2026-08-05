@@ -218,6 +218,7 @@ func (a *App) CreateFullProject(cat, ref, owner, name, description, license stri
 		return none, err
 	}
 	p.Source = b.source
+	p.SourceCommit = b.commit
 
 	a.mu.Lock()
 	token, login := a.token, a.auth.Login

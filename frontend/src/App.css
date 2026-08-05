@@ -72,6 +72,17 @@ select option {
     padding: 1px 8px;
 }
 .updbtn { color: var(--brass); border-color: var(--brass-deep); font-size: 13px; }
+.driftchip {
+    font-style: normal;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    color: var(--ink);
+    background: var(--brass);
+    border-radius: 7px;
+    padding: 1px 8px;
+    margin-left: 10px;
+    vertical-align: middle;
+}
 .upd { color: var(--brass); text-decoration: underline; cursor: pointer; }
 #sec-about p { margin-bottom: 6px; font-size: 14px; }
 .session { display: flex; align-items: center; gap: 10px; }

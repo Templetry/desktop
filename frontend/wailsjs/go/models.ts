@@ -113,6 +113,20 @@ export namespace main {
 	        this.dir = source["dir"];
 	    }
 	}
+	export class Drift {
+	    dir: string;
+	    latest: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Drift(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.dir = source["dir"];
+	        this.latest = source["latest"];
+	    }
+	}
 	export class LoadedCatalog {
 	    name: string;
 	    official: boolean;
@@ -154,6 +168,7 @@ export namespace main {
 	    name: string;
 	    template: string;
 	    source: string;
+	    commit: string;
 	    variables: Record<string, string>;
 	    features: Record<string, boolean>;
 	
@@ -167,6 +182,7 @@ export namespace main {
 	        this.name = source["name"];
 	        this.template = source["template"];
 	        this.source = source["source"];
+	        this.commit = source["commit"];
 	        this.variables = source["variables"];
 	        this.features = source["features"];
 	    }

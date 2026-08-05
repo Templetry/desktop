@@ -5,7 +5,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
+	"github.com/Templetry/engine/source"
 	"github.com/goccy/go-yaml"
 )
 
@@ -15,6 +17,7 @@ type LocalProject struct {
 	Name      string            `json:"name"`
 	Template  string            `json:"template"`
 	Source    string            `json:"source"`
+	Commit    string            `json:"commit"`
 	Variables map[string]string `json:"variables"`
 	Features  map[string]bool   `json:"features"`
 }
@@ -44,6 +47,7 @@ func (a *App) ScanProjects() ([]LocalProject, error) {
 			Template struct {
 				Name   string `yaml:"name"`
 				Source string `yaml:"source"`
+				Commit string `yaml:"commit"`
 			} `yaml:"template"`
 			Variables map[string]string `yaml:"variables"`
 			Features  map[string]bool   `yaml:"features"`
@@ -53,9 +57,53 @@ func (a *App) ScanProjects() ([]LocalProject, error) {
 		}
 		out = append(out, LocalProject{
 			Dir: dir, Name: e.Name(),
-			Template: ans.Template.Name, Source: ans.Template.Source,
+			Template: ans.Template.Name, Source: ans.Template.Source, Commit: ans.Template.Commit,
 			Variables: ans.Variables, Features: ans.Features,
 		})
+	}
+	return out, nil
+}
+
+// Drift marks a project whose template moved past the recorded commit.
+type Drift struct {
+	Dir    string `json:"dir"`
+	Latest string `json:"latest"`
+}
+
+// CheckDrift compares each project's recorded template commit against the
+// template's current head. One API call per distinct repo@ref.
+func (a *App) CheckDrift() ([]Drift, error) {
+	projects, err := a.ScanProjects()
+	if err != nil {
+		return nil, err
+	}
+	a.mu.Lock()
+	token := a.token
+	a.mu.Unlock()
+	cache := map[string]string{}
+	out := []Drift{}
+	for _, p := range projects {
+		if p.Commit == "" || !strings.HasPrefix(p.Source, "github.com/") {
+			continue
+		}
+		rest := strings.TrimPrefix(p.Source, "github.com/")
+		repo, right, ok := strings.Cut(rest, "@")
+		if !ok {
+			continue
+		}
+		ref, _, _ := strings.Cut(right, "/")
+		key := repo + "@" + ref
+		latest, seen := cache[key]
+		if !seen {
+			latest, err = source.ResolveGitHubRef(repo, ref, token)
+			if err != nil {
+				continue
+			}
+			cache[key] = latest
+		}
+		if latest != p.Commit {
+			out = append(out, Drift{Dir: p.Dir, Latest: latest})
+		}
 	}
 	return out, nil
 }
