@@ -36,6 +36,7 @@ func clientID() string {
 type AuthStatus struct {
 	State           string `json:"state"` // logged_out | pending | logged_in | error
 	Login           string `json:"login,omitempty"`
+	Avatar          string `json:"avatar,omitempty"`
 	UserCode        string `json:"userCode,omitempty"`
 	VerificationURI string `json:"verificationUri,omitempty"`
 	Error           string `json:"error,omitempty"`
@@ -64,7 +65,7 @@ func (a *App) GetAuthStatus() AuthStatus {
 		a.setAuth(s)
 		return s
 	}
-	login, err := a.fetchLogin(token)
+	login, avatar, err := a.fetchLogin(token)
 	if err != nil {
 		_ = keyring.Delete(keyringService, keyringUser)
 		s := AuthStatus{State: "logged_out"}
@@ -74,30 +75,31 @@ func (a *App) GetAuthStatus() AuthStatus {
 	a.mu.Lock()
 	a.token = token
 	a.mu.Unlock()
-	s := AuthStatus{State: "logged_in", Login: login}
+	s := AuthStatus{State: "logged_in", Login: login, Avatar: avatar}
 	a.setAuth(s)
 	return s
 }
 
-func (a *App) fetchLogin(token string) (string, error) {
+func (a *App) fetchLogin(token string) (string, string, error) {
 	req, _ := http.NewRequest("GET", "https://api.github.com/user", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept", "application/vnd.github+json")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("GitHub /user: HTTP %d", resp.StatusCode)
+		return "", "", fmt.Errorf("GitHub /user: HTTP %d", resp.StatusCode)
 	}
 	var u struct {
-		Login string `json:"login"`
+		Login     string `json:"login"`
+		AvatarURL string `json:"avatar_url"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&u); err != nil {
-		return "", err
+		return "", "", err
 	}
-	return u.Login, nil
+	return u.Login, u.AvatarURL, nil
 }
 
 func postForm(u string, form url.Values) (map[string]any, error) {
@@ -155,7 +157,7 @@ func (a *App) StartGitHubLogin() (AuthStatus, error) {
 				continue
 			}
 			if token, _ := res["access_token"].(string); token != "" {
-				login, err := a.fetchLogin(token)
+				login, avatar, err := a.fetchLogin(token)
 				if err != nil {
 					a.setAuth(AuthStatus{State: "error", Error: err.Error()})
 					return
@@ -164,7 +166,7 @@ func (a *App) StartGitHubLogin() (AuthStatus, error) {
 				a.mu.Lock()
 				a.token = token
 				a.mu.Unlock()
-				a.setAuth(AuthStatus{State: "logged_in", Login: login})
+				a.setAuth(AuthStatus{State: "logged_in", Login: login, Avatar: avatar})
 				return
 			}
 			switch res["error"] {

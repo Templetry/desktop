@@ -154,6 +154,7 @@ function App() {
                         title="Profile & settings">⚙ Settings</button>
                     {auth.state === "logged_in" && (
                         <>
+                            {auth.avatar && <img className="avatar" src={auth.avatar} alt="" />}
                             <span className="who">@{auth.login}</span>
                             <button onClick={() => Logout().then(() => setAuth({ state: "logged_out" }))}>Sign out</button>
                         </>
@@ -203,9 +204,13 @@ function App() {
                                     <em>{repos.length}</em>
                                 </button>
                                 {[...new Set(repos.map((r) => r.owner))].map((o) => (
-                                    <button key={o} className={`form ${ownerFilter === o ? "active" : ""}`}
+                                    <button key={o} className={`form owner ${ownerFilter === o ? "active" : ""}`}
                                         onClick={() => setOwnerFilter(o)}>
-                                        <span>{o}</span>
+                                        <span>
+                                            <img className="avatar sm" alt=""
+                                                src={repos.find((r) => r.owner === o)?.avatarUrl} />
+                                            {o}
+                                        </span>
                                         <em>{repos.filter((r) => r.owner === o).length}</em>
                                     </button>
                                 ))}

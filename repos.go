@@ -22,6 +22,7 @@ type Repo struct {
 	Language    string `json:"language"`
 	UpdatedAt   string `json:"updatedAt"`
 	Archived    bool   `json:"archived"`
+	AvatarURL   string `json:"avatarUrl"`
 }
 
 // ListRepos returns the user's repositories across personal account and orgs,
@@ -54,7 +55,8 @@ func (a *App) ListRepos() ([]Repo, error) {
 			UpdatedAt   string `json:"updated_at"`
 			Archived    bool   `json:"archived"`
 			Owner       struct {
-				Login string `json:"login"`
+				Login     string `json:"login"`
+				AvatarURL string `json:"avatar_url"`
 			} `json:"owner"`
 		}
 		err = json.NewDecoder(resp.Body).Decode(&batch)
@@ -67,7 +69,7 @@ func (a *App) ListRepos() ([]Repo, error) {
 				Name: r.Name, FullName: r.FullName, Owner: r.Owner.Login,
 				Description: r.Description, HTMLURL: r.HTMLURL, CloneURL: r.CloneURL,
 				Private: r.Private, Language: r.Language, UpdatedAt: r.UpdatedAt,
-				Archived: r.Archived,
+				Archived: r.Archived, AvatarURL: r.Owner.AvatarURL,
 			})
 		}
 		if len(batch) < 100 {

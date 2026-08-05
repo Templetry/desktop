@@ -98,6 +98,7 @@ export namespace main {
 	export class AuthStatus {
 	    state: string;
 	    login?: string;
+	    avatar?: string;
 	    userCode?: string;
 	    verificationUri?: string;
 	    error?: string;
@@ -110,6 +111,7 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.state = source["state"];
 	        this.login = source["login"];
+	        this.avatar = source["avatar"];
 	        this.userCode = source["userCode"];
 	        this.verificationUri = source["verificationUri"];
 	        this.error = source["error"];
@@ -156,6 +158,7 @@ export namespace main {
 	    language: string;
 	    updatedAt: string;
 	    archived: boolean;
+	    avatarUrl: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Repo(source);
@@ -173,6 +176,7 @@ export namespace main {
 	        this.language = source["language"];
 	        this.updatedAt = source["updatedAt"];
 	        this.archived = source["archived"];
+	        this.avatarUrl = source["avatarUrl"];
 	    }
 	}
 	export class appConfig {

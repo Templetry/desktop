@@ -64,6 +64,15 @@ select option {
 }
 .brand .tag { font-size: 12px; color: var(--linen-dim); }
 .session { display: flex; align-items: center; gap: 10px; }
+.avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--brass-deep);
+    display: block;
+}
+.avatar.sm { width: 20px; height: 20px; display: inline-block; vertical-align: middle; margin-right: 8px; }
+.form.owner span { display: flex; align-items: center; overflow: hidden; }
 .session .who { font-size: 14px; color: var(--brass); }
 .session button.active { border-color: var(--brass); color: var(--brass); }
 .pendingchip {
