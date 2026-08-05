@@ -253,7 +253,10 @@ button {
     font-size: 14px;
     cursor: pointer;
 }
-button:hover:not(:disabled) { border-color: var(--brass-deep); }
+button:hover:not(:disabled) {
+    border-color: var(--brass-deep);
+    box-shadow: 0 0 0 0.5px var(--brass-deep);
+}
 button:disabled { opacity: 0.45; cursor: default; }
 button.primary {
     background: var(--brass);
@@ -281,6 +284,44 @@ button.primary:hover:not(:disabled) { background: var(--brass-lift); }
 :root[data-density="compact"] button { padding: 5px 12px; font-size: 13px; }
 :root[data-density="compact"] .topbar { height: 46px; }
 :root[data-density="compact"] aside { padding: 14px 12px; }
+
+.seg {
+    display: flex;
+    flex: 1;
+    border: 1px solid var(--thread);
+    border-radius: 6px;
+    overflow: hidden;
+}
+.seg button {
+    flex: 1;
+    border: none;
+    border-radius: 0;
+    padding: 8px 10px;
+    background: var(--ink-2);
+    box-shadow: none !important;
+}
+.seg button + button { border-left: 1px solid var(--thread); }
+.seg button.on {
+    background: var(--brass);
+    color: var(--ink);
+    font-weight: 600;
+}
+
+.field input[type="range"] {
+    flex: 1;
+    padding: 0;
+    accent-color: var(--brass);
+    background: transparent;
+    border: none;
+}
+.scaleval {
+    font-style: normal;
+    font-family: Consolas, monospace;
+    font-size: 12.5px;
+    color: var(--linen-dim);
+    width: 44px;
+    text-align: right;
+}
 
 .field input[type="color"] {
     flex: 0 0 64px;

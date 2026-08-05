@@ -334,45 +334,51 @@ function App() {
                         </section>
                         <section id="sec-appearance">
                             <h3>Appearance</h3>
-                            <label className="field">
+                            <div className="field">
                                 <span>Theme</span>
-                                <select value={settings.uiTheme ?? "dark"}
-                                    onChange={(e) => { const s = { ...settings, uiTheme: e.target.value }; setSettings(s); applyUi(s); }}>
-                                    <option value="dark">Dark (Ink &amp; Brass)</option>
-                                    <option value="light">Light (Linen)</option>
-                                </select>
-                            </label>
+                                <div className="seg">
+                                    {[["dark", "Dark (Ink & Brass)"], ["light", "Light (Linen)"]].map(([v, l]) => (
+                                        <button key={v} className={(settings.uiTheme ?? "dark") === v ? "on" : ""}
+                                            onClick={() => { const s = { ...settings, uiTheme: v }; setSettings(s); applyUi(s); }}>
+                                            {l}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                             <label className="field">
                                 <span>Accent color</span>
                                 <input type="color" value={settings.uiAccent || "#d9a441"}
                                     onChange={(e) => { const s = { ...settings, uiAccent: e.target.value }; setSettings(s); applyUi(s); }} />
                             </label>
-                            <label className="field">
+                            <div className="field">
                                 <span>Density</span>
-                                <select value={settings.uiDensity ?? "comfortable"}
-                                    onChange={(e) => { const s = { ...settings, uiDensity: e.target.value }; setSettings(s); applyUi(s); }}>
-                                    <option value="comfortable">Comfortable</option>
-                                    <option value="compact">Compact</option>
-                                </select>
-                            </label>
+                                <div className="seg">
+                                    {[["comfortable", "Comfortable"], ["compact", "Compact"]].map(([v, l]) => (
+                                        <button key={v} className={(settings.uiDensity ?? "comfortable") === v ? "on" : ""}
+                                            onClick={() => { const s = { ...settings, uiDensity: v }; setSettings(s); applyUi(s); }}>
+                                            {l}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                             <label className="field">
                                 <span>Interface scale</span>
-                                <select value={settings.uiScale ?? "1"}
-                                    onChange={(e) => { const s = { ...settings, uiScale: e.target.value }; setSettings(s); applyUi(s); }}>
-                                    <option value="0.9">90%</option>
-                                    <option value="1">100%</option>
-                                    <option value="1.1">110%</option>
-                                    <option value="1.25">125%</option>
-                                </select>
+                                <input type="range" min="0.8" max="1.3" step="0.05"
+                                    value={parseFloat(settings.uiScale ?? "1")}
+                                    onChange={(e) => { const s = { ...settings, uiScale: e.target.value }; setSettings(s); applyUi(s); }} />
+                                <em className="scaleval">{Math.round(parseFloat(settings.uiScale ?? "1") * 100)}%</em>
                             </label>
-                            <label className="field">
+                            <div className="field">
                                 <span>Preview panel</span>
-                                <select value={settings.uiLayout ?? "auto"}
-                                    onChange={(e) => { const s = { ...settings, uiLayout: e.target.value }; setSettings(s); applyUi(s); }}>
-                                    <option value="auto">Beside the form on wide windows</option>
-                                    <option value="stacked">Always below the form</option>
-                                </select>
-                            </label>
+                                <div className="seg">
+                                    {[["auto", "Beside the form"], ["stacked", "Below the form"]].map(([v, l]) => (
+                                        <button key={v} className={(settings.uiLayout ?? "auto") === v ? "on" : ""}
+                                            onClick={() => { const s = { ...settings, uiLayout: v }; setSettings(s); applyUi(s); }}>
+                                            {l}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                             <p className="hint">Changes apply live; Save makes them permanent.</p>
                         </section>
                         <section className="span2" id="sec-catalogs">
