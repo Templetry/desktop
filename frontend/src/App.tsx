@@ -34,6 +34,12 @@ function App() {
     const [error, setError] = useState("");
     const [busy, setBusy] = useState(false);
     const [view, setView] = useState<"create" | "repos" | "settings">("create");
+    const [collapsed, setCollapsed] = useState(localStorage.getItem("tpl.sidebar") === "1");
+    const toggleSidebar = () => {
+        const v = !collapsed;
+        setCollapsed(v);
+        localStorage.setItem("tpl.sidebar", v ? "1" : "0");
+    };
     const [settings, setSettings] = useState<any>({});
     const [settingsMsg, setSettingsMsg] = useState("");
     const [repos, setRepos] = useState<any[]>([]);
@@ -164,32 +170,48 @@ function App() {
                 </div>
             </header>
             <div id="app">
-            <aside>
-                <div className="nav">
-                    <button className={view === "create" ? "active" : ""} onClick={() => setView("create")}>
-                        New project
-                    </button>
-                    <button className={view === "repos" ? "active" : ""} disabled={auth.state !== "logged_in"}
-                        onClick={() => { setView("repos"); if (!repos.length) loadRepos(); }}>
-                        My repos
-                    </button>
-                </div>
-                {view === "create" && parents.map((p) => (
-                    <div key={p.key} className="parent">
-                        <h2>{p.label ?? p.key}</h2>
-                        {p.forms.map((f) => {
-                            const ref = `${p.key}/${f.form}`;
-                            const ready = !f.status || f.status === "ready";
-                            return (
-                                <button key={ref} className={`form ${selected === ref ? "active" : ""}`}
-                                    disabled={!ready} onClick={() => pick(ref)} title={f.description}>
-                                    <span>{f.form}</span>
-                                    {!ready && <em>{f.status}</em>}
-                                </button>
-                            );
-                        })}
+            <aside className={collapsed ? "collapsed" : ""}>
+                <button className="collapse" onClick={toggleSidebar}
+                    title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
+                    {collapsed ? "»" : "«"}
+                </button>
+                {collapsed ? (
+                    <div className="rail">
+                        <button className={view === "create" ? "active" : ""} title="New project"
+                            onClick={() => setView("create")}>+</button>
+                        <button className={view === "repos" ? "active" : ""} title="My repos"
+                            disabled={auth.state !== "logged_in"}
+                            onClick={() => { setView("repos"); if (!repos.length) loadRepos(); }}>▤</button>
                     </div>
-                ))}
+                ) : (
+                    <>
+                        <div className="nav">
+                            <button className={view === "create" ? "active" : ""} onClick={() => setView("create")}>
+                                New project
+                            </button>
+                            <button className={view === "repos" ? "active" : ""} disabled={auth.state !== "logged_in"}
+                                onClick={() => { setView("repos"); if (!repos.length) loadRepos(); }}>
+                                My repos
+                            </button>
+                        </div>
+                        {view === "create" && parents.map((p) => (
+                            <div key={p.key} className="parent">
+                                <h2>{p.label ?? p.key}<em>{p.forms.length}</em></h2>
+                                {p.forms.map((f) => {
+                                    const ref = `${p.key}/${f.form}`;
+                                    const ready = !f.status || f.status === "ready";
+                                    return (
+                                        <button key={ref} className={`form ${selected === ref ? "active" : ""}`}
+                                            disabled={!ready} onClick={() => pick(ref)} title={f.description}>
+                                            <span>{f.form}</span>
+                                            {!ready && <em>{f.status}</em>}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        ))}
+                    </>
+                )}
             </aside>
 
             <main>
