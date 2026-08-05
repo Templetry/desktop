@@ -48,10 +48,20 @@ function App() {
             .finally(() => setBusy(false));
     };
 
+    const applyUi = (s: any) => {
+        const root = document.documentElement;
+        root.dataset.theme = s?.uiTheme === "light" ? "light" : "dark";
+        root.dataset.density = s?.uiDensity === "compact" ? "compact" : "comfortable";
+        document.body.classList.toggle("layout-stacked", s?.uiLayout === "stacked");
+        root.style.setProperty("--brass", s?.uiAccent || "#d9a441");
+        (document.body.style as any).zoom = s?.uiScale || "1";
+    };
+
     useEffect(() => {
         GetCatalog().then((r: any) => setParents(r.parents ?? [])).catch((e: any) => setError(String(e)));
         GetAuthStatus().then(setAuth).catch(() => {});
         GetSettings().then((s: any) => {
+            applyUi(s);
             setSettings(s ?? {});
             const dir = s?.defaultParentDir || s?.lastParentDir;
             if (dir) setParentDir(dir);
@@ -223,6 +233,49 @@ function App() {
                                     onChange={(e) => setSettings({ ...settings, defaultPrivate: e.target.checked })} />
                                 <span>New repositories private by default</span>
                             </label>
+                        </section>
+                        <section>
+                            <h3>Appearance</h3>
+                            <label className="field">
+                                <span>Theme</span>
+                                <select value={settings.uiTheme ?? "dark"}
+                                    onChange={(e) => { const s = { ...settings, uiTheme: e.target.value }; setSettings(s); applyUi(s); }}>
+                                    <option value="dark">Dark (Ink &amp; Brass)</option>
+                                    <option value="light">Light (Linen)</option>
+                                </select>
+                            </label>
+                            <label className="field">
+                                <span>Accent color</span>
+                                <input type="color" value={settings.uiAccent || "#d9a441"}
+                                    onChange={(e) => { const s = { ...settings, uiAccent: e.target.value }; setSettings(s); applyUi(s); }} />
+                            </label>
+                            <label className="field">
+                                <span>Density</span>
+                                <select value={settings.uiDensity ?? "comfortable"}
+                                    onChange={(e) => { const s = { ...settings, uiDensity: e.target.value }; setSettings(s); applyUi(s); }}>
+                                    <option value="comfortable">Comfortable</option>
+                                    <option value="compact">Compact</option>
+                                </select>
+                            </label>
+                            <label className="field">
+                                <span>Interface scale</span>
+                                <select value={settings.uiScale ?? "1"}
+                                    onChange={(e) => { const s = { ...settings, uiScale: e.target.value }; setSettings(s); applyUi(s); }}>
+                                    <option value="0.9">90%</option>
+                                    <option value="1">100%</option>
+                                    <option value="1.1">110%</option>
+                                    <option value="1.25">125%</option>
+                                </select>
+                            </label>
+                            <label className="field">
+                                <span>Preview panel</span>
+                                <select value={settings.uiLayout ?? "auto"}
+                                    onChange={(e) => { const s = { ...settings, uiLayout: e.target.value }; setSettings(s); applyUi(s); }}>
+                                    <option value="auto">Beside the form on wide windows</option>
+                                    <option value="stacked">Always below the form</option>
+                                </select>
+                            </label>
+                            <p className="hint">Changes apply live; Save makes them permanent.</p>
                         </section>
                         <section>
                             <h3>Catalog</h3>

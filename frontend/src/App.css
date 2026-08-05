@@ -7,7 +7,8 @@
     --linen: #eae7de;
     --linen-dim: #969aa8;
     --brass: #d9a441;
-    --brass-deep: #b5852c;
+    --brass-deep: color-mix(in srgb, var(--brass) 78%, black);
+    --brass-lift: color-mix(in srgb, var(--brass) 85%, white);
     --ok: #a4d9a9;
     --bad: #ff9090;
 }
@@ -182,7 +183,33 @@ button.primary {
     color: var(--ink);
     font-weight: 600;
 }
-button.primary:hover:not(:disabled) { background: #e4b458; }
+button.primary:hover:not(:disabled) { background: var(--brass-lift); }
+
+:root[data-theme="light"] {
+    color-scheme: light;
+    --ink: #f2efe6;
+    --ink-2: #e9e5d9;
+    --surface: #ddd8c9;
+    --thread: #c7c1af;
+    --linen: #1d1f26;
+    --linen-dim: #676a78;
+    --ok: #2c6b36;
+    --bad: #a83232;
+}
+
+:root[data-density="compact"] main { padding: 18px 24px; }
+:root[data-density="compact"] main section { margin-top: 14px; }
+:root[data-density="compact"] .field { margin-bottom: 6px; }
+:root[data-density="compact"] button { padding: 5px 12px; font-size: 13px; }
+:root[data-density="compact"] .topbar { height: 46px; }
+:root[data-density="compact"] aside { padding: 14px 12px; }
+
+.field input[type="color"] {
+    flex: 0 0 64px;
+    height: 34px;
+    padding: 2px;
+    cursor: pointer;
+}
 
 .actions { display: flex; gap: 12px; margin-top: 28px; }
 
@@ -306,6 +333,12 @@ button.primary:hover:not(:disabled) { background: #e4b458; }
 @media (min-width: 1100px) {
     .preview { height: calc(100vh - 230px); }
 }
+
+body.layout-stacked .workspace { flex-direction: column; }
+body.layout-stacked .formcol { width: auto; }
+body.layout-stacked .sidecol { position: static; }
+body.layout-stacked .preview { height: 420px; }
+body.layout-stacked .previewempty { display: none; }
 
 /* â”€â”€ Repos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .repolist { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }

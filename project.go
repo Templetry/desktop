@@ -27,6 +27,11 @@ type appConfig struct {
 	DefaultPrivate   bool   `json:"defaultPrivate"`
 	DefaultLicense   string `json:"defaultLicense"`
 	RegistryURL      string `json:"registryUrl"`
+	UITheme          string `json:"uiTheme"`   // dark (default) | light
+	UIAccent         string `json:"uiAccent"`  // hex; empty = brand brass
+	UIDensity        string `json:"uiDensity"` // comfortable (default) | compact
+	UIScale          string `json:"uiScale"`   // 0.9 | 1 | 1.1 | 1.25
+	UILayout         string `json:"uiLayout"`  // auto (default) | stacked
 }
 
 // effectiveParentDir prefers the configured default over the last-used one.

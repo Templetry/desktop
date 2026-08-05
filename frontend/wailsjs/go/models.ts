@@ -182,6 +182,11 @@ export namespace main {
 	    defaultPrivate: boolean;
 	    defaultLicense: string;
 	    registryUrl: string;
+	    uiTheme: string;
+	    uiAccent: string;
+	    uiDensity: string;
+	    uiScale: string;
+	    uiLayout: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new appConfig(source);
@@ -195,6 +200,11 @@ export namespace main {
 	        this.defaultPrivate = source["defaultPrivate"];
 	        this.defaultLicense = source["defaultLicense"];
 	        this.registryUrl = source["registryUrl"];
+	        this.uiTheme = source["uiTheme"];
+	        this.uiAccent = source["uiAccent"];
+	        this.uiDensity = source["uiDensity"];
+	        this.uiScale = source["uiScale"];
+	        this.uiLayout = source["uiLayout"];
 	    }
 	}
 
