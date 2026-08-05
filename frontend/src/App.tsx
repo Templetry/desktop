@@ -194,6 +194,23 @@ function App() {
                                 My repos
                             </button>
                         </div>
+                        {view === "repos" && (
+                            <div className="parent">
+                                <h2>Owners<em>{repos.length}</em></h2>
+                                <button className={`form ${ownerFilter === "" ? "active" : ""}`}
+                                    onClick={() => setOwnerFilter("")}>
+                                    <span>All</span>
+                                    <em>{repos.length}</em>
+                                </button>
+                                {[...new Set(repos.map((r) => r.owner))].map((o) => (
+                                    <button key={o} className={`form ${ownerFilter === o ? "active" : ""}`}
+                                        onClick={() => setOwnerFilter(o)}>
+                                        <span>{o}</span>
+                                        <em>{repos.filter((r) => r.owner === o).length}</em>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                         {view === "create" && parents.map((p) => (
                             <div key={p.key} className="parent">
                                 <h2>{p.label ?? p.key}<em>{p.forms.length}</em></h2>
@@ -329,12 +346,6 @@ function App() {
                         <div className="outrow" style={{ marginTop: 16 }}>
                             <input placeholder="Search…" value={repoFilter}
                                 onChange={(e) => setRepoFilter(e.target.value)} />
-                            <select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}>
-                                <option value="">All owners</option>
-                                {[...new Set(repos.map((r) => r.owner))].map((o) => (
-                                    <option key={o} value={o}>{o}</option>
-                                ))}
-                            </select>
                             <button onClick={loadRepos} disabled={busy}>Refresh</button>
                         </div>
                         {repoMsg && <pre className="output">{repoMsg}</pre>}
