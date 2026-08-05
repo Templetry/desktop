@@ -196,7 +196,8 @@ function App() {
                 {view === "settings" && (
                     <>
                         <header><h2>Profile &amp; settings</h2></header>
-                        <section>
+                        <div className="settingsgrid">
+                        <section className="span2">
                             <h3>Profile</h3>
                             {auth.state === "logged_in"
                                 ? <p>Signed in as <strong>@{auth.login}</strong></p>
@@ -297,6 +298,7 @@ function App() {
                         </div>
                         {settingsMsg && <pre className="output">{settingsMsg}</pre>}
                         {error && <pre className="error">{error}</pre>}
+                        </div>
                     </>
                 )}
                 {view === "repos" && (
