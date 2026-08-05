@@ -1,4 +1,4 @@
-﻿:root {
+:root {
     color-scheme: dark;
     --ink: #15171e;
     --ink-2: #1b1e27;
@@ -86,7 +86,7 @@ select option {
     min-height: 0;
 }
 
-/* â”€â”€ Sidebar: the loom â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* -- Sidebar: the loom ------------------------------- */
 aside {
     width: 280px;
     padding: 22px 16px;
@@ -123,11 +123,11 @@ aside {
 }
 .form:hover:not(:disabled) { background: var(--surface); }
 .form.active { background: var(--surface); border-color: var(--brass-deep); }
-.form.active span::before { content: "â–¸ "; color: var(--brass); }
+.form.active span::before { content: "\25B8  "; color: var(--brass); }
 .form:disabled { color: #5b5f6e; cursor: default; }
 .form em { font-size: 11px; color: #5b5f6e; font-style: normal; }
 
-/* â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* -- Main -------------------------------------------- */
 main { flex: 1; padding: 30px 36px; overflow-y: auto; }
 main header h2 { font-size: 21px; font-weight: 650; }
 main header p { color: var(--linen-dim); font-size: 13px; margin-top: 4px; }
@@ -229,7 +229,7 @@ button.primary:hover:not(:disabled) { background: var(--brass-lift); }
 
 .empty { color: #5b5f6e; margin-top: 40vh; text-align: center; }
 
-/* â”€â”€ Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* -- Auth -------------------------------------------- */
 .authbox {
     margin-top: 26px;
     padding-top: 16px;
@@ -251,7 +251,7 @@ button.primary:hover:not(:disabled) { background: var(--brass-lift); }
 .authbox .autherr { font-size: 11px; color: var(--bad); }
 .hint { font-size: 13px; color: var(--linen-dim); margin-top: 6px; }
 
-/* â”€â”€ Nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* -- Nav --------------------------------------------- */
 .nav { display: flex; gap: 6px; margin: 0 0 16px; }
 .nav button { flex: 1; padding: 7px 0; font-size: 13px; }
 .nav button.active {
@@ -260,7 +260,7 @@ button.primary:hover:not(:disabled) { background: var(--brass-lift); }
     background: var(--ink-2);
 }
 
-/* â”€â”€ Adaptive workspace â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* -- Adaptive workspace ------------------------------ */
 .settingsgrid { display: flex; flex-direction: column; }
 @media (min-width: 1100px) {
     .settingsgrid {
@@ -296,7 +296,7 @@ button.primary:hover:not(:disabled) { background: var(--brass-lift); }
     .previewempty { display: flex; align-items: center; justify-content: center; margin-top: 24px; min-height: 300px; }
 }
 
-/* â”€â”€ Preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* -- Preview ----------------------------------------- */
 .preview {
     display: flex;
     gap: 0;
@@ -354,7 +354,7 @@ body.layout-stacked .sidecol { position: static; }
 body.layout-stacked .preview { height: 420px; }
 body.layout-stacked .previewempty { display: none; }
 
-/* â”€â”€ Repos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* -- Repos ------------------------------------------- */
 .repolist { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
 @media (min-width: 1100px) {
     .repolist {
