@@ -3,6 +3,7 @@ import {
     GetCatalogs, GetTemplate, PreviewProject, PreviewFile, ChooseParentDir, GetLastParentDir,
     GetAuthStatus, StartGitHubLogin, Logout, GetOwners, CreateFullProject,
     ListRepos, OpenRepo, CloneRepo, GetSettings, SaveSettings, ExportSettings, ImportSettings,
+    ScanProjects, OpenFolder,
 } from "../wailsjs/go/main/App";
 import "./App.css";
 
@@ -34,7 +35,7 @@ function App() {
     const [result, setResult] = useState<{ url: string; dir: string } | null>(null);
     const [error, setError] = useState("");
     const [busy, setBusy] = useState(false);
-    const [view, setView] = useState<"create" | "repos" | "settings">("create");
+    const [view, setView] = useState<"create" | "repos" | "settings" | "projects">("create");
     const [collapsed, setCollapsed] = useState(localStorage.getItem("tpl.sidebar") === "1");
     const toggleSidebar = () => {
         const v = !collapsed;
@@ -47,6 +48,16 @@ function App() {
     const [repoFilter, setRepoFilter] = useState("");
     const [ownerFilter, setOwnerFilter] = useState("");
     const [repoMsg, setRepoMsg] = useState("");
+
+    const [projects, setProjects] = useState<any[]>([]);
+    const [projFilter, setProjFilter] = useState("");
+
+    const loadProjects = () => {
+        setBusy(true);
+        ScanProjects().then((p: any[]) => setProjects(p ?? []))
+            .catch((e: any) => setError(String(e)))
+            .finally(() => setBusy(false));
+    };
 
     const loadRepos = () => {
         setBusy(true);
@@ -64,7 +75,7 @@ function App() {
         (document.body.style as any).zoom = s?.uiScale || "1";
     };
 
-    const switchView = (v: "create" | "repos" | "settings") => {
+    const switchView = (v: "create" | "repos" | "settings" | "projects") => {
         setView(v);
         setError("");
         setSettingsMsg("");
@@ -214,6 +225,8 @@ function App() {
                         <button className={view === "repos" ? "active" : ""} title="My repos"
                             disabled={auth.state !== "logged_in"}
                             onClick={() => { switchView("repos"); if (!repos.length) loadRepos(); }}>▤</button>
+                        <button className={view === "projects" ? "active" : ""} title="My projects"
+                            onClick={() => { switchView("projects"); loadProjects(); }}>▣</button>
                     </div>
                 ) : (
                     <>
@@ -225,7 +238,28 @@ function App() {
                                 onClick={() => { switchView("repos"); if (!repos.length) loadRepos(); }}>
                                 My repos
                             </button>
+                            <button className={view === "projects" ? "active" : ""}
+                                onClick={() => { switchView("projects"); loadProjects(); }}>
+                                My projects
+                            </button>
                         </div>
+                        {view === "projects" && (
+                            <div className="parent">
+                                <h2>Templates<em>{projects.length}</em></h2>
+                                <button className={`form ${projFilter === "" ? "active" : ""}`}
+                                    onClick={() => setProjFilter("")}>
+                                    <span>All</span>
+                                    <em>{projects.length}</em>
+                                </button>
+                                {[...new Set(projects.map((p) => p.template))].map((t) => (
+                                    <button key={t} className={`form ${projFilter === t ? "active" : ""}`}
+                                        onClick={() => setProjFilter(t)}>
+                                        <span>{t}</span>
+                                        <em>{projects.filter((p) => p.template === t).length}</em>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                         {view === "settings" && (
                             <div className="parent">
                                 <h2>Sections</h2>
@@ -437,6 +471,38 @@ function App() {
                         </div>
                         {settingsMsg && <pre className="output">{settingsMsg}</pre>}
                         {error && <pre className="error">{error}</pre>}
+                        </div>
+                    </>
+                )}
+                {view === "projects" && (
+                    <>
+                        <header><h2>My projects</h2></header>
+                        <div className="outrow" style={{ marginTop: 16 }}>
+                            <button onClick={loadProjects} disabled={busy}>Refresh</button>
+                        </div>
+                        {error && <pre className="error">{error}</pre>}
+                        <div className="repolist">
+                            {projects
+                                .filter((p) => !projFilter || p.template === projFilter)
+                                .map((p) => (
+                                    <div key={p.dir} className="repo">
+                                        <div className="repoinfo">
+                                            <strong>{p.name}</strong>
+                                            <span className="meta">{p.template} · {p.source}</span>
+                                            <span className="desc">
+                                                {Object.entries(p.variables ?? {}).map(([k, v]) => `${k}=${v}`).join(" · ")}
+                                                {Object.entries(p.features ?? {}).filter(([, on]) => on).length > 0 &&
+                                                    ` · features: ${Object.entries(p.features ?? {}).filter(([, on]) => on).map(([k]) => k).join(", ")}`}
+                                            </span>
+                                        </div>
+                                        <div className="repoactions">
+                                            <button onClick={() => OpenFolder(p.dir)}>Open folder</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            {!projects.length && !busy && (
+                                <div className="empty">No Templetry projects found in your repositories folder yet.</div>
+                            )}
                         </div>
                     </>
                 )}

@@ -149,6 +149,28 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class LocalProject {
+	    dir: string;
+	    name: string;
+	    template: string;
+	    source: string;
+	    variables: Record<string, string>;
+	    features: Record<string, boolean>;
+	
+	    static createFrom(source: any = {}) {
+	        return new LocalProject(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.dir = source["dir"];
+	        this.name = source["name"];
+	        this.template = source["template"];
+	        this.source = source["source"];
+	        this.variables = source["variables"];
+	        this.features = source["features"];
+	    }
+	}
 	export class PreviewEntry {
 	    path: string;
 	    binary: boolean;

@@ -62,6 +62,10 @@ export function Logout() {
   return window['go']['main']['App']['Logout']();
 }
 
+export function OpenFolder(arg1) {
+  return window['go']['main']['App']['OpenFolder'](arg1);
+}
+
 export function OpenRepo(arg1) {
   return window['go']['main']['App']['OpenRepo'](arg1);
 }
@@ -84,6 +88,10 @@ export function PublishProject(arg1, arg2, arg3, arg4) {
 
 export function SaveSettings(arg1) {
   return window['go']['main']['App']['SaveSettings'](arg1);
+}
+
+export function ScanProjects() {
+  return window['go']['main']['App']['ScanProjects']();
 }
 
 export function StartGitHubLogin() {
