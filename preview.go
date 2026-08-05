@@ -17,8 +17,8 @@ type PreviewEntry struct {
 
 // PreviewProject renders the template in memory with the given inputs and
 // returns the resulting file list. Nothing touches the disk.
-func (a *App) PreviewProject(ref string, vars map[string]string, feats map[string]bool) ([]PreviewEntry, error) {
-	b, err := a.fetchBundle(ref)
+func (a *App) PreviewProject(cat, ref string, vars map[string]string, feats map[string]bool) ([]PreviewEntry, error) {
+	b, err := a.fetchBundle(cat, ref)
 	if err != nil {
 		return nil, err
 	}

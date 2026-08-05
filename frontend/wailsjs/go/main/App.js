@@ -14,20 +14,20 @@ export function CloneRepo(arg1, arg2) {
   return window['go']['main']['App']['CloneRepo'](arg1, arg2);
 }
 
-export function CreateFullProject(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) {
-  return window['go']['main']['App']['CreateFullProject'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+export function CreateFullProject(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) {
+  return window['go']['main']['App']['CreateFullProject'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
 }
 
-export function CreateProject(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['CreateProject'](arg1, arg2, arg3, arg4);
+export function CreateProject(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['CreateProject'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function GetAuthStatus() {
   return window['go']['main']['App']['GetAuthStatus']();
 }
 
-export function GetCatalog() {
-  return window['go']['main']['App']['GetCatalog']();
+export function GetCatalogs() {
+  return window['go']['main']['App']['GetCatalogs']();
 }
 
 export function GetLastParentDir() {
@@ -42,8 +42,8 @@ export function GetSettings() {
   return window['go']['main']['App']['GetSettings']();
 }
 
-export function GetTemplate(arg1) {
-  return window['go']['main']['App']['GetTemplate'](arg1);
+export function GetTemplate(arg1, arg2) {
+  return window['go']['main']['App']['GetTemplate'](arg1, arg2);
 }
 
 export function ListRepos() {
@@ -58,16 +58,16 @@ export function OpenRepo(arg1) {
   return window['go']['main']['App']['OpenRepo'](arg1);
 }
 
-export function PlanProject(arg1, arg2, arg3) {
-  return window['go']['main']['App']['PlanProject'](arg1, arg2, arg3);
+export function PlanProject(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['PlanProject'](arg1, arg2, arg3, arg4);
 }
 
 export function PreviewFile(arg1) {
   return window['go']['main']['App']['PreviewFile'](arg1);
 }
 
-export function PreviewProject(arg1, arg2, arg3) {
-  return window['go']['main']['App']['PreviewProject'](arg1, arg2, arg3);
+export function PreviewProject(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['PreviewProject'](arg1, arg2, arg3, arg4);
 }
 
 export function PublishProject(arg1, arg2, arg3, arg4) {

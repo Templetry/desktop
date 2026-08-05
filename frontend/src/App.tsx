@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-    GetCatalog, GetTemplate, PreviewProject, PreviewFile, ChooseParentDir, GetLastParentDir,
+    GetCatalogs, GetTemplate, PreviewProject, PreviewFile, ChooseParentDir, GetLastParentDir,
     GetAuthStatus, StartGitHubLogin, Logout, GetOwners, CreateFullProject,
     ListRepos, OpenRepo, CloneRepo, GetSettings, SaveSettings,
 } from "../wailsjs/go/main/App";
@@ -15,7 +15,8 @@ type Manifest = { name: string; description?: string; variables?: Variable[]; fe
 const LICENSES = ["", "mit", "apache-2.0", "gpl-3.0", "bsd-3-clause", "mpl-2.0", "unlicense"];
 
 function App() {
-    const [parents, setParents] = useState<Parent[]>([]);
+    const [catalogs, setCatalogs] = useState<any[]>([]);
+    const [selectedCat, setSelectedCat] = useState("");
     const [selected, setSelected] = useState("");
     const [manifest, setManifest] = useState<Manifest | null>(null);
     const [vars, setVars] = useState<Record<string, string>>({});
@@ -63,8 +64,12 @@ function App() {
         (document.body.style as any).zoom = s?.uiScale || "1";
     };
 
+    const loadCatalogs = () => {
+        GetCatalogs().then((cs: any[]) => setCatalogs(cs ?? [])).catch((e: any) => setError(String(e)));
+    };
+
     useEffect(() => {
-        GetCatalog().then((r: any) => setParents(r.parents ?? [])).catch((e: any) => setError(String(e)));
+        loadCatalogs();
         GetAuthStatus().then(setAuth).catch(() => {});
         GetSettings().then((s: any) => {
             applyUi(s);
@@ -95,11 +100,12 @@ function App() {
         }
     }, [auth.state]);
 
-    const pick = async (ref: string) => {
+    const pick = async (cat: string, ref: string) => {
+        setSelectedCat(cat);
         setSelected(ref); setManifest(null); setPreviewEntries([]); setPreviewSel(""); setPreviewContent("");
         setResult(null); setError(""); setBusy(true);
         try {
-            const m: Manifest = (await GetTemplate(ref)) as any;
+            const m: Manifest = (await GetTemplate(cat, ref)) as any;
             setManifest(m);
             const v: Record<string, string> = {};
             (m.variables ?? []).forEach((x) => { v[x.key] = x.default ?? ""; });
@@ -121,7 +127,7 @@ function App() {
     const preview = async () => {
         setBusy(true); setError(""); setResult(null); setPreviewSel(""); setPreviewContent("");
         try {
-            setPreviewEntries((await PreviewProject(selected, inputs, feats)) as any[]);
+            setPreviewEntries((await PreviewProject(selectedCat, selected, inputs, feats)) as any[]);
             setTimeout(() => document.querySelector(".previewsec")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
         }
         catch (e) { setError(String(e)); } finally { setBusy(false); }
@@ -137,7 +143,7 @@ function App() {
         setBusy(true); setError(""); setResult(null);
         try {
             const desc = `Created with Templetry (${selected})`;
-            const r: any = await CreateFullProject(selected, owner, repoName, desc, license, repoPrivate, parentDir, inputs, feats);
+            const r: any = await CreateFullProject(selectedCat, selected, owner, repoName, desc, license, repoPrivate, parentDir, inputs, feats);
             setResult(r);
         } catch (e) { setError(String(e)); } finally { setBusy(false); }
     };
@@ -216,20 +222,30 @@ function App() {
                                 ))}
                             </div>
                         )}
-                        {view === "create" && parents.map((p) => (
-                            <div key={p.key} className="parent">
-                                <h2>{p.label ?? p.key}<em>{p.forms.length}</em></h2>
-                                {p.forms.map((f) => {
-                                    const ref = `${p.key}/${f.form}`;
-                                    const ready = !f.status || f.status === "ready";
-                                    return (
-                                        <button key={ref} className={`form ${selected === ref ? "active" : ""}`}
-                                            disabled={!ready} onClick={() => pick(ref)} title={f.description}>
-                                            <span>{f.form}</span>
-                                            {!ready && <em>{f.status}</em>}
-                                        </button>
-                                    );
-                                })}
+                        {view === "create" && catalogs.map((c) => (
+                            <div key={c.name} className="catalog">
+                                <div className="cathead">
+                                    <span>{c.name}</span>
+                                    {c.official && <em className="badge">official</em>}
+                                </div>
+                                {c.error && <p className="caterr">{c.error}</p>}
+                                {(c.parents ?? []).map((p: Parent) => (
+                                    <div key={c.name + p.key} className="parent">
+                                        <h2>{p.label ?? p.key}<em>{p.forms.length}</em></h2>
+                                        {p.forms.map((f) => {
+                                            const ref = `${p.key}/${f.form}`;
+                                            const active = selectedCat === c.name && selected === ref;
+                                            const ready = !f.status || f.status === "ready";
+                                            return (
+                                                <button key={ref} className={`form ${active ? "active" : ""}`}
+                                                    disabled={!ready} onClick={() => pick(c.name, ref)} title={f.description}>
+                                                    <span>{f.form}</span>
+                                                    {!ready && <em>{f.status}</em>}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                ))}
                             </div>
                         ))}
                     </>
@@ -322,21 +338,44 @@ function App() {
                             </label>
                             <p className="hint">Changes apply live; Save makes them permanent.</p>
                         </section>
-                        <section>
-                            <h3>Catalog</h3>
-                            <label className="field">
-                                <span>Registry URL</span>
-                                <input value={settings.registryUrl ?? ""}
-                                    placeholder="(official Templetry catalog)"
-                                    onChange={(e) => setSettings({ ...settings, registryUrl: e.target.value })} />
-                            </label>
-                            <p className="hint">Cross-device sync of these settings via your GitHub account is planned.</p>
+                        <section className="span2">
+                            <h3>Catalogs</h3>
+                            <div className="catrow">
+                                <span className="catname">Templetry <em className="badge">official</em></span>
+                                <input value="Built-in default catalog" readOnly />
+                            </div>
+                            {(settings.catalogs ?? []).map((c: any, i: number) => (
+                                <div key={i} className="catrow">
+                                    <input className="catnameinput" placeholder="Name" value={c.name ?? ""}
+                                        onChange={(e) => {
+                                            const cs = [...(settings.catalogs ?? [])];
+                                            cs[i] = { ...cs[i], name: e.target.value };
+                                            setSettings({ ...settings, catalogs: cs });
+                                        }} />
+                                    <input placeholder="https://…/registry.json (or a local file path)" value={c.url ?? ""}
+                                        onChange={(e) => {
+                                            const cs = [...(settings.catalogs ?? [])];
+                                            cs[i] = { ...cs[i], url: e.target.value };
+                                            setSettings({ ...settings, catalogs: cs });
+                                        }} />
+                                    <button onClick={() => setSettings({
+                                        ...settings,
+                                        catalogs: (settings.catalogs ?? []).filter((_: any, j: number) => j !== i),
+                                    })}>Remove</button>
+                                </div>
+                            ))}
+                            <button onClick={() => setSettings({
+                                ...settings,
+                                catalogs: [...(settings.catalogs ?? []), { name: "", url: "" }],
+                            })}>+ Add catalog</button>
+                            <p className="hint">Any registry.json (schema v2) works — yours, your team's, anyone's. Save to reload the sidebar.</p>
                         </section>
                         <div className="actions">
                             <button className="primary" onClick={() => {
                                 SaveSettings(settings).then(() => {
                                     setSettingsMsg("Saved.");
                                     if (settings.defaultParentDir) setParentDir(settings.defaultParentDir);
+                                    loadCatalogs();
                                 }).catch((e: any) => setError(String(e)));
                             }}>Save settings</button>
                         </div>

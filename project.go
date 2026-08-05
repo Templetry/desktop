@@ -32,6 +32,13 @@ type appConfig struct {
 	UIDensity        string `json:"uiDensity"` // comfortable (default) | compact
 	UIScale          string `json:"uiScale"`   // 0.9 | 1 | 1.1 | 1.25
 	UILayout         string `json:"uiLayout"`  // auto (default) | stacked
+	Catalogs         []CatalogEntry `json:"catalogs"`
+}
+
+// CatalogEntry is one user-defined catalog (the official one is built in).
+type CatalogEntry struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
 }
 
 // effectiveParentDir prefers the configured default over the last-used one.
@@ -120,7 +127,7 @@ func (a *App) GetOwners() ([]string, error) {
 // CreateFullProject runs the repo-first pipeline: create the cloud repo
 // (owner = user login or an org; empty owner = local only), clone it into
 // parentDir/name, render the template into the clone, commit and push.
-func (a *App) CreateFullProject(ref, owner, name, description, license string, private bool, parentDir string, vars map[string]string, feats map[string]bool) (CreatedProject, error) {
+func (a *App) CreateFullProject(cat, ref, owner, name, description, license string, private bool, parentDir string, vars map[string]string, feats map[string]bool) (CreatedProject, error) {
 	none := CreatedProject{}
 	if name == "" || parentDir == "" {
 		return none, fmt.Errorf("repository name and local folder are required")
@@ -131,7 +138,7 @@ func (a *App) CreateFullProject(ref, owner, name, description, license string, p
 	}
 
 	// Validate inputs and build the plan BEFORE touching the cloud.
-	b, err := a.fetchBundle(ref)
+	b, err := a.fetchBundle(cat, ref)
 	if err != nil {
 		return none, err
 	}

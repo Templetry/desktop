@@ -20,7 +20,7 @@ import (
 type App struct {
 	ctx   context.Context
 	mu    sync.Mutex
-	reg   *catalog.Registry
+	regs  map[string]*catalog.Registry
 	cache map[string]*bundle
 
 	token        string
@@ -36,25 +36,29 @@ type bundle struct {
 }
 
 func NewApp() *App {
-	return &App{cache: map[string]*bundle{}}
+	return &App{cache: map[string]*bundle{}, regs: map[string]*catalog.Registry{}}
 }
+
+// OfficialCatalogName labels the built-in Templetry catalog.
+const OfficialCatalogName = "Templetry"
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 }
 
-// GetCatalog fetches the official registry (cached per session).
-func (a *App) GetCatalog() (*catalog.Registry, error) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	if a.reg != nil {
-		return a.reg, nil
+// LoadedCatalog is one catalog as the sidebar renders it.
+type LoadedCatalog struct {
+	Name     string           `json:"name"`
+	Official bool             `json:"official"`
+	Error    string           `json:"error,omitempty"`
+	Parents  []catalog.Parent `json:"parents,omitempty"`
+}
+
+func fetchRegistry(location string) (*catalog.Registry, error) {
+	if data, err := os.ReadFile(location); err == nil {
+		return catalog.Parse(data)
 	}
-	registryURL := loadConfig().RegistryURL
-	if registryURL == "" {
-		registryURL = catalog.DefaultRegistryURL
-	}
-	resp, err := http.Get(registryURL)
+	resp, err := http.Get(location)
 	if err != nil {
 		return nil, fmt.Errorf("fetching catalog: %w", err)
 	}
@@ -66,25 +70,53 @@ func (a *App) GetCatalog() (*catalog.Registry, error) {
 	if err != nil {
 		return nil, err
 	}
-	reg, err := catalog.Parse(data)
-	if err != nil {
-		return nil, err
-	}
-	a.reg = reg
-	return reg, nil
+	return catalog.Parse(data)
 }
 
-// fetchBundle downloads and caches a form's template.
-func (a *App) fetchBundle(ref string) (*bundle, error) {
+// GetCatalogs loads the official catalog plus every user-defined one.
+// Per-catalog failures are reported, never fatal.
+func (a *App) GetCatalogs() []LoadedCatalog {
+	cfg := loadConfig()
+	sources := []struct {
+		name, url string
+		official  bool
+	}{{OfficialCatalogName, catalog.DefaultRegistryURL, true}}
+	for _, c := range cfg.Catalogs {
+		if c.Name != "" && c.URL != "" && c.Name != OfficialCatalogName {
+			sources = append(sources, struct {
+				name, url string
+				official  bool
+			}{c.Name, c.URL, false})
+		}
+	}
+	out := make([]LoadedCatalog, 0, len(sources))
+	for _, s := range sources {
+		reg, err := fetchRegistry(s.url)
+		if err != nil {
+			out = append(out, LoadedCatalog{Name: s.name, Official: s.official, Error: err.Error()})
+			continue
+		}
+		a.mu.Lock()
+		a.regs[s.name] = reg
+		a.mu.Unlock()
+		out = append(out, LoadedCatalog{Name: s.name, Official: s.official, Parents: reg.Parents})
+	}
+	return out
+}
+
+// fetchBundle downloads and caches a form's template from a named catalog.
+func (a *App) fetchBundle(cat, ref string) (*bundle, error) {
+	key := cat + "::" + ref
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if b, ok := a.cache[ref]; ok {
+	if b, ok := a.cache[key]; ok {
 		return b, nil
 	}
-	if a.reg == nil {
-		return nil, fmt.Errorf("catalog not loaded yet")
+	reg := a.regs[cat]
+	if reg == nil {
+		return nil, fmt.Errorf("catalog %q not loaded yet", cat)
 	}
-	parent, form, err := a.reg.Resolve(ref)
+	parent, form, err := reg.Resolve(ref)
 	if err != nil {
 		return nil, err
 	}
@@ -108,13 +140,13 @@ func (a *App) fetchBundle(ref string) (*bundle, error) {
 		manifest: m,
 		source:   fmt.Sprintf("github.com/%s@%s/%s", parent.Repo, parent.Ref, form.Path),
 	}
-	a.cache[ref] = b
+	a.cache[key] = b
 	return b, nil
 }
 
 // GetTemplate returns a form's manifest — the dynamic form definition.
-func (a *App) GetTemplate(ref string) (*manifest.Manifest, error) {
-	b, err := a.fetchBundle(ref)
+func (a *App) GetTemplate(cat, ref string) (*manifest.Manifest, error) {
+	b, err := a.fetchBundle(cat, ref)
 	if err != nil {
 		return nil, err
 	}
@@ -122,8 +154,8 @@ func (a *App) GetTemplate(ref string) (*manifest.Manifest, error) {
 }
 
 // PlanProject returns the human-readable dry-run for the given inputs.
-func (a *App) PlanProject(ref string, vars map[string]string, feats map[string]bool) (string, error) {
-	b, err := a.fetchBundle(ref)
+func (a *App) PlanProject(cat, ref string, vars map[string]string, feats map[string]bool) (string, error) {
+	b, err := a.fetchBundle(cat, ref)
 	if err != nil {
 		return "", err
 	}
@@ -135,11 +167,11 @@ func (a *App) PlanProject(ref string, vars map[string]string, feats map[string]b
 }
 
 // CreateProject renders the form into outDir.
-func (a *App) CreateProject(ref, outDir string, vars map[string]string, feats map[string]bool) (string, error) {
+func (a *App) CreateProject(cat, ref, outDir string, vars map[string]string, feats map[string]bool) (string, error) {
 	if outDir == "" {
 		return "", fmt.Errorf("choose an output directory first")
 	}
-	b, err := a.fetchBundle(ref)
+	b, err := a.fetchBundle(cat, ref)
 	if err != nil {
 		return "", err
 	}

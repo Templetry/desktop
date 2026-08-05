@@ -58,38 +58,6 @@ export namespace catalog {
 		    return a;
 		}
 	}
-	export class Registry {
-	    schema_version: number;
-	    parents: Parent[];
-	
-	    static createFrom(source: any = {}) {
-	        return new Registry(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.schema_version = source["schema_version"];
-	        this.parents = this.convertValues(source["parents"], Parent);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
 
 }
 
@@ -117,6 +85,20 @@ export namespace main {
 	        this.error = source["error"];
 	    }
 	}
+	export class CatalogEntry {
+	    name: string;
+	    url: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CatalogEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.url = source["url"];
+	    }
+	}
 	export class CreatedProject {
 	    url: string;
 	    dir: string;
@@ -130,6 +112,42 @@ export namespace main {
 	        this.url = source["url"];
 	        this.dir = source["dir"];
 	    }
+	}
+	export class LoadedCatalog {
+	    name: string;
+	    official: boolean;
+	    error?: string;
+	    parents?: catalog.Parent[];
+	
+	    static createFrom(source: any = {}) {
+	        return new LoadedCatalog(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.official = source["official"];
+	        this.error = source["error"];
+	        this.parents = this.convertValues(source["parents"], catalog.Parent);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class PreviewEntry {
 	    path: string;
@@ -191,6 +209,7 @@ export namespace main {
 	    uiDensity: string;
 	    uiScale: string;
 	    uiLayout: string;
+	    catalogs: CatalogEntry[];
 	
 	    static createFrom(source: any = {}) {
 	        return new appConfig(source);
@@ -209,7 +228,26 @@ export namespace main {
 	        this.uiDensity = source["uiDensity"];
 	        this.uiScale = source["uiScale"];
 	        this.uiLayout = source["uiLayout"];
+	        this.catalogs = this.convertValues(source["catalogs"], CatalogEntry);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 
 }
