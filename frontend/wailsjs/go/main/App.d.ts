@@ -3,6 +3,8 @@
 import {main} from '../models';
 import {manifest} from '../models';
 
+export function CheckUpdates():Promise<main.UpdateInfo>;
+
 export function ChooseOutputDir():Promise<string>;
 
 export function ChooseParentDir():Promise<string>;
@@ -26,6 +28,8 @@ export function GetOwners():Promise<Array<string>>;
 export function GetSettings():Promise<main.appConfig>;
 
 export function GetTemplate(arg1:string,arg2:string):Promise<manifest.Manifest>;
+
+export function GetVersions():Promise<main.VersionInfo>;
 
 export function ImportSettings():Promise<main.appConfig>;
 

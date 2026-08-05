@@ -3,7 +3,7 @@ import {
     GetCatalogs, GetTemplate, PreviewProject, PreviewFile, ChooseParentDir, GetLastParentDir,
     GetAuthStatus, StartGitHubLogin, Logout, GetOwners, CreateFullProject,
     ListRepos, OpenRepo, CloneRepo, GetSettings, SaveSettings, ExportSettings, ImportSettings,
-    ScanProjects, OpenFolder,
+    ScanProjects, OpenFolder, GetVersions, CheckUpdates,
 } from "../wailsjs/go/main/App";
 import "./App.css";
 
@@ -51,6 +51,20 @@ function App() {
 
     const [projects, setProjects] = useState<any[]>([]);
     const [projFilter, setProjFilter] = useState("");
+    const [versions, setVersions] = useState<any>({});
+    const [updates, setUpdates] = useState<any>(null);
+    const [updMsg, setUpdMsg] = useState("");
+
+    const checkUpdates = (announce: boolean) => {
+        CheckUpdates().then((u: any) => {
+            setUpdates(u);
+            if (announce) {
+                setUpdMsg(u.appUpdate || u.engineUpdate
+                    ? "Updates available - see below."
+                    : "Everything is up to date.");
+            }
+        }).catch((e: any) => { if (announce) setError(String(e)); });
+    };
 
     const loadProjects = () => {
         setBusy(true);
@@ -116,6 +130,8 @@ function App() {
             if (typeof s?.defaultPrivate === "boolean") setRepoPrivate(s.defaultPrivate);
         }).catch(() => {});
         GetLastParentDir().catch(() => {});
+        GetVersions().then(setVersions).catch(() => {});
+        checkUpdates(false);
     }, []);
 
     useEffect(() => {
@@ -189,9 +205,16 @@ function App() {
             <header className="topbar">
                 <div className="brand">
                     <h1>Templetry</h1>
+                    <span className="ver">v{versions.app ?? "dev"}</span>
                     <span className="tag">Project scaffolding for every platform</span>
                 </div>
                 <div className="session">
+                    {updates && (updates.appUpdate || updates.engineUpdate) && (
+                        <button className="updbtn" title="A new version is available"
+                            onClick={() => { switchView("settings"); setTimeout(() => document.getElementById("sec-about")?.scrollIntoView({ behavior: "smooth" }), 60); }}>
+                            ● Update available
+                        </button>
+                    )}
                     <button className={view === "settings" ? "active" : ""} onClick={() => switchView("settings")}
                         title="Profile & settings">⚙ Settings</button>
                     {auth.state === "logged_in" && (
@@ -263,7 +286,7 @@ function App() {
                         {view === "settings" && (
                             <div className="parent">
                                 <h2>Sections</h2>
-                                {["Profile", "Defaults", "Appearance", "Catalogs"].map((s) => (
+                                {["Profile", "Defaults", "Appearance", "Catalogs", "About"].map((s) => (
                                     <button key={s} className="form"
                                         onClick={() => document.getElementById("sec-" + s.toLowerCase())
                                             ?.scrollIntoView({ behavior: "smooth", block: "start" })}>
@@ -471,6 +494,19 @@ function App() {
                         </div>
                         {settingsMsg && <pre className="output">{settingsMsg}</pre>}
                         {error && <pre className="error">{error}</pre>}
+                        <section className="span2" id="sec-about">
+                            <h3>About</h3>
+                            <p>Templetry Desktop <strong>v{versions.app ?? "dev"}</strong>
+                                {updates?.appUpdate && <> — <a onClick={() => OpenRepo(updates.appUrl)} className="upd">update {updates.appLatest} available</a></>}
+                            </p>
+                            <p>Embedded engine <strong>{versions.engine ?? "?"}</strong>
+                                {updates?.engineUpdate && <> — <a onClick={() => OpenRepo(updates.engineUrl)} className="upd">engine {updates.engineLatest} released</a></>}
+                            </p>
+                            <div className="actions" style={{ marginTop: 14 }}>
+                                <button onClick={() => checkUpdates(true)}>Check for updates</button>
+                            </div>
+                            {updMsg && <pre className="output">{updMsg}</pre>}
+                        </section>
                         </div>
                     </>
                 )}

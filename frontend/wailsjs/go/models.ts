@@ -219,6 +219,42 @@ export namespace main {
 	        this.avatarUrl = source["avatarUrl"];
 	    }
 	}
+	export class UpdateInfo {
+	    appLatest: string;
+	    engineLatest: string;
+	    appUpdate: boolean;
+	    engineUpdate: boolean;
+	    appUrl: string;
+	    engineUrl: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.appLatest = source["appLatest"];
+	        this.engineLatest = source["engineLatest"];
+	        this.appUpdate = source["appUpdate"];
+	        this.engineUpdate = source["engineUpdate"];
+	        this.appUrl = source["appUrl"];
+	        this.engineUrl = source["engineUrl"];
+	    }
+	}
+	export class VersionInfo {
+	    app: string;
+	    engine: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new VersionInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.app = source["app"];
+	        this.engine = source["engine"];
+	    }
+	}
 	export class appConfig {
 	    lastParentDir: string;
 	    defaultParentDir: string;
