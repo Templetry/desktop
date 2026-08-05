@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
     GetCatalogs, GetTemplate, PreviewProject, PreviewFile, ChooseParentDir, GetLastParentDir,
     GetAuthStatus, StartGitHubLogin, Logout, GetOwners, CreateFullProject,
-    ListRepos, OpenRepo, CloneRepo, GetSettings, SaveSettings,
+    ListRepos, OpenRepo, CloneRepo, GetSettings, SaveSettings, ExportSettings, ImportSettings,
 } from "../wailsjs/go/main/App";
 import "./App.css";
 
@@ -390,6 +390,19 @@ function App() {
                                     loadCatalogs();
                                 }).catch((e: any) => setError(String(e)));
                             }}>Save settings</button>
+                            <button onClick={() => {
+                                ExportSettings().then((p: string) => p && setSettingsMsg(`Exported to ${p}`))
+                                    .catch((e: any) => setError(String(e)));
+                            }}>Export…</button>
+                            <button onClick={() => {
+                                ImportSettings().then((s: any) => {
+                                    setSettings(s ?? {});
+                                    applyUi(s);
+                                    if (s?.defaultParentDir) setParentDir(s.defaultParentDir);
+                                    loadCatalogs();
+                                    setSettingsMsg("Imported and applied.");
+                                }).catch((e: any) => setError(String(e)));
+                            }}>Import…</button>
                         </div>
                         {settingsMsg && <pre className="output">{settingsMsg}</pre>}
                         {error && <pre className="error">{error}</pre>}

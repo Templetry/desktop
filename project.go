@@ -53,6 +53,50 @@ func effectiveParentDir() string {
 // GetSettings returns the persisted app settings.
 func (a *App) GetSettings() appConfig { return loadConfig() }
 
+// ExportSettings writes the settings to a user-chosen JSON file. The GitHub
+// token lives in the OS keyring, never in settings — exports are shareable.
+func (a *App) ExportSettings() (string, error) {
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "Export Templetry settings",
+		DefaultFilename: "templetry-settings.json",
+		Filters:         []runtime.FileFilter{{DisplayName: "JSON", Pattern: "*.json"}},
+	})
+	if err != nil || path == "" {
+		return "", err
+	}
+	data, err := json.MarshalIndent(loadConfig(), "", "  ")
+	if err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+// ImportSettings loads settings from a user-chosen JSON file, persists them
+// and returns them so the UI can apply immediately.
+func (a *App) ImportSettings() (appConfig, error) {
+	current := loadConfig()
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title:   "Import Templetry settings",
+		Filters: []runtime.FileFilter{{DisplayName: "JSON", Pattern: "*.json"}},
+	})
+	if err != nil || path == "" {
+		return current, err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return current, err
+	}
+	var c appConfig
+	if err := json.Unmarshal(data, &c); err != nil {
+		return current, fmt.Errorf("not a valid settings file: %w", err)
+	}
+	saveConfig(c)
+	return c, nil
+}
+
 // SaveSettings persists the app settings.
 func (a *App) SaveSettings(c appConfig) { saveConfig(c) }
 

@@ -22,6 +22,10 @@ export function CreateProject(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['CreateProject'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function ExportSettings() {
+  return window['go']['main']['App']['ExportSettings']();
+}
+
 export function GetAuthStatus() {
   return window['go']['main']['App']['GetAuthStatus']();
 }
@@ -44,6 +48,10 @@ export function GetSettings() {
 
 export function GetTemplate(arg1, arg2) {
   return window['go']['main']['App']['GetTemplate'](arg1, arg2);
+}
+
+export function ImportSettings() {
+  return window['go']['main']['App']['ImportSettings']();
 }
 
 export function ListRepos() {

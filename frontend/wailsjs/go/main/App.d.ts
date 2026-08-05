@@ -13,6 +13,8 @@ export function CreateFullProject(arg1:string,arg2:string,arg3:string,arg4:strin
 
 export function CreateProject(arg1:string,arg2:string,arg3:string,arg4:Record<string, string>,arg5:Record<string, boolean>):Promise<string>;
 
+export function ExportSettings():Promise<string>;
+
 export function GetAuthStatus():Promise<main.AuthStatus>;
 
 export function GetCatalogs():Promise<Array<main.LoadedCatalog>>;
@@ -24,6 +26,8 @@ export function GetOwners():Promise<Array<string>>;
 export function GetSettings():Promise<main.appConfig>;
 
 export function GetTemplate(arg1:string,arg2:string):Promise<manifest.Manifest>;
+
+export function ImportSettings():Promise<main.appConfig>;
 
 export function ListRepos():Promise<Array<main.Repo>>;
 
