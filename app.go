@@ -27,6 +27,10 @@ type App struct {
 	auth         AuthStatus
 	authRestored bool
 	preview      *source.FileSet
+
+	updDir     string
+	updFiles   *source.FileSet
+	updEntries []UpdateEntry
 }
 
 type bundle struct {

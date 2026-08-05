@@ -3,6 +3,8 @@
 import {main} from '../models';
 import {manifest} from '../models';
 
+export function ApplyUpdate():Promise<number>;
+
 export function CheckDrift():Promise<Array<main.Drift>>;
 
 export function CheckUpdates():Promise<main.UpdateInfo>;
@@ -49,6 +51,8 @@ export function PreviewFile(arg1:string):Promise<string>;
 
 export function PreviewProject(arg1:string,arg2:string,arg3:Record<string, string>,arg4:Record<string, boolean>):Promise<Array<main.PreviewEntry>>;
 
+export function PreviewUpdate(arg1:string):Promise<main.UpdatePreview>;
+
 export function PublishProject(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<string>;
 
 export function SaveSettings(arg1:main.appConfig):Promise<void>;
@@ -56,3 +60,5 @@ export function SaveSettings(arg1:main.appConfig):Promise<void>;
 export function ScanProjects():Promise<Array<main.LocalProject>>;
 
 export function StartGitHubLogin():Promise<main.AuthStatus>;
+
+export function UpdateFileContent(arg1:string):Promise<string>;

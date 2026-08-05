@@ -4,6 +4,7 @@ import {
     GetAuthStatus, StartGitHubLogin, Logout, GetOwners, CreateFullProject,
     ListRepos, OpenRepo, CloneRepo, GetSettings, SaveSettings, ExportSettings, ImportSettings,
     ScanProjects, OpenFolder, GetVersions, CheckUpdates, CheckDrift,
+    PreviewUpdate, UpdateFileContent, ApplyUpdate,
 } from "../wailsjs/go/main/App";
 import "./App.css";
 
@@ -67,6 +68,26 @@ function App() {
     };
 
     const [drifts, setDrifts] = useState<Record<string, string>>({});
+    const [updPrev, setUpdPrev] = useState<any>(null);
+    const [updSel, setUpdSel] = useState("");
+    const [updContent, setUpdContent] = useState("");
+
+    const previewUpdate = (dir: string) => {
+        setBusy(true); setError(""); setUpdPrev(null); setUpdSel(""); setUpdContent("");
+        PreviewUpdate(dir).then((p: any) => {
+            setUpdPrev(p);
+            setTimeout(() => document.getElementById("updpanel")?.scrollIntoView({ behavior: "smooth" }), 60);
+        }).catch((e: any) => setError(String(e))).finally(() => setBusy(false));
+    };
+
+    const applyUpdate = () => {
+        setBusy(true); setError("");
+        ApplyUpdate().then((n: number) => {
+            setRepoMsg(`Update applied: ${n} files written. Review with git before committing.`);
+            setUpdPrev(null);
+            loadProjects();
+        }).catch((e: any) => setError(String(e))).finally(() => setBusy(false));
+    };
 
     const loadProjects = () => {
         setBusy(true);
@@ -545,6 +566,10 @@ function App() {
                                             </span>
                                         </div>
                                         <div className="repoactions">
+                                            {drifts[p.dir] && (
+                                                <button className="primary" disabled={busy}
+                                                    onClick={() => previewUpdate(p.dir)}>Preview update</button>
+                                            )}
                                             <button onClick={() => OpenFolder(p.dir)}>Open folder</button>
                                         </div>
                                     </div>
@@ -553,6 +578,49 @@ function App() {
                                 <div className="empty">No Templetry projects found in your repositories folder yet.</div>
                             )}
                         </div>
+                        {updPrev && (
+                            <section id="updpanel">
+                                <h3>
+                                    Update — {updPrev.template} · {(updPrev.oldCommit ?? "").slice(0, 7)} → {(updPrev.newCommit ?? "").slice(0, 7)}
+                                    {" · "}{(updPrev.entries ?? []).length} changed · {updPrev.unchanged} unchanged
+                                </h3>
+                                {(updPrev.entries ?? []).length === 0 ? (
+                                    <p className="hint">The template moved, but this project's output is identical — nothing to apply.</p>
+                                ) : (
+                                    <>
+                                        <div className="preview" style={{ height: 380 }}>
+                                            <div className="ptree">
+                                                {(updPrev.entries ?? []).map((e: any) => (
+                                                    <button key={e.path}
+                                                        className={`pfile ${updSel === e.path ? "active" : ""}`}
+                                                        onClick={() => {
+                                                            setUpdSel(e.path);
+                                                            UpdateFileContent(e.path).then((c: string) => setUpdContent(c))
+                                                                .catch((err: any) => setUpdContent(String(err)));
+                                                        }}>
+                                                        <span>{e.path}</span>
+                                                        <em>{e.status}</em>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <pre className="pcontent">
+                                                {updSel ? updContent : "Select a file to inspect its updated content."}
+                                            </pre>
+                                        </div>
+                                        <div className="actions">
+                                            <button className="primary" disabled={busy} onClick={applyUpdate}>
+                                                Apply update
+                                            </button>
+                                            <button onClick={() => setUpdPrev(null)}>Dismiss</button>
+                                        </div>
+                                        <p className="hint">
+                                            Apply writes added and modified files only — it never deletes yours. Review with git, then commit or discard.
+                                        </p>
+                                    </>
+                                )}
+                            </section>
+                        )}
+                        {repoMsg && <pre className="output">{repoMsg}</pre>}
                     </>
                 )}
                 {view === "repos" && (
