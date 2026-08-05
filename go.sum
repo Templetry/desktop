@@ -1,7 +1,7 @@
 git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 h1:N3IGoHHp9pb6mj1cbXbuaSXV/UMKwmbKLf53nQmtqMA=
 git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3/go.mod h1:QtOLZGz8olr4qH2vWK0QH0w0O4T9fEIjMuWpKUsH7nc=
-github.com/Templetry/engine v0.2.1-0.20260802112155-dd1014ee6f4a h1:4KyDiHRQYfLmKsgSE5lQpk4fKJ9A1uA/s9IZSWrWmLo=
-github.com/Templetry/engine v0.2.1-0.20260802112155-dd1014ee6f4a/go.mod h1:lgJ8XRT56b265vl66Lq7Q/MXIhVXJPQYq7NYfo37e4M=
+github.com/Templetry/engine v0.2.1 h1:Zf5mLf9C8/xbjMnXHPfvleVjZpVm3KQBJ15GXymcMhk=
+github.com/Templetry/engine v0.2.1/go.mod h1:lgJ8XRT56b265vl66Lq7Q/MXIhVXJPQYq7NYfo37e4M=
 github.com/bep/debounce v1.2.1 h1:v67fRdBA9UQu2NhLFXrSg0Brw7CexQekrBwDMM8bzeY=
 github.com/bep/debounce v1.2.1/go.mod h1:H8yggRPQKLUhUoqrJC1bO2xNya7vanpDl7xR3ISbCJ0=
 github.com/bmatcuk/doublestar/v4 v4.10.0 h1:zU9WiOla1YA122oLM6i4EXvGW62DvKZVxIe6TYWexEs=

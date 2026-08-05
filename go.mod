@@ -3,7 +3,7 @@ module desktop
 go 1.26
 
 require (
-	github.com/Templetry/engine v0.2.1-0.20260802112155-dd1014ee6f4a
+	github.com/Templetry/engine v0.2.1
 	github.com/wailsapp/wails/v2 v2.13.0
 	github.com/zalando/go-keyring v0.2.8
 )
