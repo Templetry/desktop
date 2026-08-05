@@ -50,8 +50,35 @@ func effectiveParentDir() string {
 	return c.LastParentDir
 }
 
-// GetSettings returns the persisted app settings.
-func (a *App) GetSettings() appConfig { return loadConfig() }
+// withDefaults fills empty fields so the UI always receives valid values.
+func withDefaults(c appConfig) appConfig {
+	if c.UITheme == "" {
+		c.UITheme = "dark"
+	}
+	if c.UIDensity == "" {
+		c.UIDensity = "comfortable"
+	}
+	if c.UIScale == "" {
+		c.UIScale = "1"
+	}
+	if c.UILayout == "" {
+		c.UILayout = "auto"
+	}
+	if c.UIAccent == "" {
+		c.UIAccent = "#d9a441"
+	}
+	return c
+}
+
+// GetSettings returns the persisted app settings with defaults applied.
+// On first run (no config file yet) new repos default to private.
+func (a *App) GetSettings() appConfig {
+	c := loadConfig()
+	if _, err := os.Stat(configFile()); err != nil {
+		c.DefaultPrivate = true
+	}
+	return withDefaults(c)
+}
 
 // ExportSettings writes the settings to a user-chosen JSON file. The GitHub
 // token lives in the OS keyring, never in settings — exports are shareable.
@@ -94,7 +121,7 @@ func (a *App) ImportSettings() (appConfig, error) {
 		return current, fmt.Errorf("not a valid settings file: %w", err)
 	}
 	saveConfig(c)
-	return c, nil
+	return withDefaults(c), nil
 }
 
 // SaveSettings persists the app settings.

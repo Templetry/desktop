@@ -338,7 +338,7 @@ function App() {
                                 <span>Theme</span>
                                 <div className="seg">
                                     {[["dark", "Dark (Ink & Brass)"], ["light", "Light (Linen)"]].map(([v, l]) => (
-                                        <button key={v} className={(settings.uiTheme ?? "dark") === v ? "on" : ""}
+                                        <button key={v} className={(settings.uiTheme || "dark") === v ? "on" : ""}
                                             onClick={() => { const s = { ...settings, uiTheme: v }; setSettings(s); applyUi(s); }}>
                                             {l}
                                         </button>
@@ -354,7 +354,7 @@ function App() {
                                 <span>Density</span>
                                 <div className="seg">
                                     {[["comfortable", "Comfortable"], ["compact", "Compact"]].map(([v, l]) => (
-                                        <button key={v} className={(settings.uiDensity ?? "comfortable") === v ? "on" : ""}
+                                        <button key={v} className={(settings.uiDensity || "comfortable") === v ? "on" : ""}
                                             onClick={() => { const s = { ...settings, uiDensity: v }; setSettings(s); applyUi(s); }}>
                                             {l}
                                         </button>
@@ -364,15 +364,15 @@ function App() {
                             <label className="field">
                                 <span>Interface scale</span>
                                 <input type="range" min="0.8" max="1.3" step="0.05"
-                                    value={parseFloat(settings.uiScale ?? "1")}
+                                    value={parseFloat(settings.uiScale || "1")}
                                     onChange={(e) => { const s = { ...settings, uiScale: e.target.value }; setSettings(s); applyUi(s); }} />
-                                <em className="scaleval">{Math.round(parseFloat(settings.uiScale ?? "1") * 100)}%</em>
+                                <em className="scaleval">{Math.round(parseFloat(settings.uiScale || "1") * 100)}%</em>
                             </label>
                             <div className="field">
                                 <span>Preview panel</span>
                                 <div className="seg">
                                     {[["auto", "Beside the form"], ["stacked", "Below the form"]].map(([v, l]) => (
-                                        <button key={v} className={(settings.uiLayout ?? "auto") === v ? "on" : ""}
+                                        <button key={v} className={(settings.uiLayout || "auto") === v ? "on" : ""}
                                             onClick={() => { const s = { ...settings, uiLayout: v }; setSettings(s); applyUi(s); }}>
                                             {l}
                                         </button>
