@@ -27,7 +27,15 @@ export function GetCatalogs():Promise<Array<main.LoadedCatalog>>;
 
 export function GetLastParentDir():Promise<string>;
 
+export function GetLocalDoc(arg1:string,arg2:string):Promise<string>;
+
+export function GetLocalOverview(arg1:string):Promise<main.LocalOverview>;
+
 export function GetOwners():Promise<Array<string>>;
+
+export function GetRepoDoc(arg1:string,arg2:string):Promise<string>;
+
+export function GetRepoOverview(arg1:string):Promise<main.RepoOverview>;
 
 export function GetSettings():Promise<main.appConfig>;
 
@@ -40,6 +48,8 @@ export function ImportSettings():Promise<main.appConfig>;
 export function InstallAppUpdate():Promise<string>;
 
 export function ListRepos():Promise<Array<main.Repo>>;
+
+export function ListTemplateRepos():Promise<Array<string>>;
 
 export function Logout():Promise<void>;
 

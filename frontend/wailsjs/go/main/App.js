@@ -50,8 +50,24 @@ export function GetLastParentDir() {
   return window['go']['main']['App']['GetLastParentDir']();
 }
 
+export function GetLocalDoc(arg1, arg2) {
+  return window['go']['main']['App']['GetLocalDoc'](arg1, arg2);
+}
+
+export function GetLocalOverview(arg1) {
+  return window['go']['main']['App']['GetLocalOverview'](arg1);
+}
+
 export function GetOwners() {
   return window['go']['main']['App']['GetOwners']();
+}
+
+export function GetRepoDoc(arg1, arg2) {
+  return window['go']['main']['App']['GetRepoDoc'](arg1, arg2);
+}
+
+export function GetRepoOverview(arg1) {
+  return window['go']['main']['App']['GetRepoOverview'](arg1);
 }
 
 export function GetSettings() {
@@ -76,6 +92,10 @@ export function InstallAppUpdate() {
 
 export function ListRepos() {
   return window['go']['main']['App']['ListRepos']();
+}
+
+export function ListTemplateRepos() {
+  return window['go']['main']['App']['ListTemplateRepos']();
 }
 
 export function Logout() {

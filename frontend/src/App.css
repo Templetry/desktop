@@ -83,6 +83,82 @@ select option {
     margin-left: 10px;
     vertical-align: middle;
 }
+.gitchip {
+    font-style: normal;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    color: var(--linen-dim);
+    border: 1px solid var(--thread);
+    border-radius: 7px;
+    padding: 1px 8px;
+    margin-left: 10px;
+    vertical-align: middle;
+}
+.callout {
+    margin-top: 18px;
+    padding: 14px 16px;
+    max-width: 640px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border: 1px dashed var(--brass-deep);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--linen-dim);
+}
+.callout button { flex-shrink: 0; }
+
+/* -- Folder groups (Local) ---------------------------- */
+.folderhead {
+    margin-top: 22px;
+    padding-bottom: 4px;
+    border-bottom: 1px dashed var(--thread);
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.6px;
+    color: var(--linen-dim);
+}
+.folderhead em {
+    font-style: normal;
+    margin-left: 8px;
+    color: var(--brass);
+}
+
+/* -- Repo overview panels (Cloud & Local) ------------- */
+#cloudprev h3 em, #localprev h3 em { margin-left: 10px; }
+.ovdesc { margin-top: 10px; font-size: 13.5px; color: #c3c1b8; max-width: 720px; }
+.ovgrid { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.ovrow {
+    font-family: Consolas, monospace;
+    font-size: 12.5px;
+    color: var(--linen);
+    word-break: break-all;
+}
+.ovrow span {
+    display: inline-block;
+    min-width: 110px;
+    color: var(--linen-dim);
+    text-transform: uppercase;
+    font-size: 10.5px;
+    letter-spacing: 1px;
+}
+.ovrow.tplrow { color: var(--brass); }
+.cirows { margin-top: 12px; display: flex; flex-direction: column; gap: 4px; max-width: 720px; }
+.cirow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px;
+    text-align: left;
+    font-size: 12.5px;
+}
+.cirow em { font-style: normal; width: 14px; }
+.cirow em.ok { color: var(--ok); }
+.cirow em.bad { color: var(--bad); }
+.cirow em.run { color: var(--brass); }
+.cirow .meta { margin-left: auto; font-size: 11.5px; color: var(--linen-dim); font-family: Consolas, monospace; }
 .upd { color: var(--brass); text-decoration: underline; cursor: pointer; }
 #sec-about p { margin-bottom: 6px; font-size: 14px; }
 .session { display: flex; align-items: center; gap: 10px; }

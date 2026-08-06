@@ -85,6 +85,28 @@ export namespace main {
 	        this.error = source["error"];
 	    }
 	}
+	export class CIRun {
+	    name: string;
+	    branch: string;
+	    status: string;
+	    conclusion: string;
+	    url: string;
+	    updatedAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CIRun(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.branch = source["branch"];
+	        this.status = source["status"];
+	        this.conclusion = source["conclusion"];
+	        this.url = source["url"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	}
 	export class CatalogEntry {
 	    name: string;
 	    url: string;
@@ -127,6 +149,20 @@ export namespace main {
 	        this.latest = source["latest"];
 	    }
 	}
+	export class LangShare {
+	    name: string;
+	    pct: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new LangShare(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.pct = source["pct"];
+	    }
+	}
 	export class LoadedCatalog {
 	    name: string;
 	    official: boolean;
@@ -163,14 +199,72 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class LocalRemote {
+	    name: string;
+	    url: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LocalRemote(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.url = source["url"];
+	    }
+	}
+	export class LocalOverview {
+	    branch: string;
+	    branches: string[];
+	    remotes: LocalRemote[];
+	    lastCommit: string;
+	    changes: number;
+	    docs: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new LocalOverview(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.branch = source["branch"];
+	        this.branches = source["branches"];
+	        this.remotes = this.convertValues(source["remotes"], LocalRemote);
+	        this.lastCommit = source["lastCommit"];
+	        this.changes = source["changes"];
+	        this.docs = source["docs"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class LocalProject {
 	    dir: string;
 	    name: string;
-	    template: string;
-	    source: string;
-	    commit: string;
-	    variables: Record<string, string>;
-	    features: Record<string, boolean>;
+	    rel: string;
+	    kind: string;
+	    remote?: string;
+	    branch?: string;
+	    template?: string;
+	    source?: string;
+	    commit?: string;
+	    variables?: Record<string, string>;
+	    features?: Record<string, boolean>;
 	
 	    static createFrom(source: any = {}) {
 	        return new LocalProject(source);
@@ -180,6 +274,10 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.dir = source["dir"];
 	        this.name = source["name"];
+	        this.rel = source["rel"];
+	        this.kind = source["kind"];
+	        this.remote = source["remote"];
+	        this.branch = source["branch"];
 	        this.template = source["template"];
 	        this.source = source["source"];
 	        this.commit = source["commit"];
@@ -187,6 +285,7 @@ export namespace main {
 	        this.features = source["features"];
 	    }
 	}
+	
 	export class PreviewEntry {
 	    path: string;
 	    binary: boolean;
@@ -234,6 +333,48 @@ export namespace main {
 	        this.archived = source["archived"];
 	        this.avatarUrl = source["avatarUrl"];
 	    }
+	}
+	export class RepoOverview {
+	    description: string;
+	    defaultBranch: string;
+	    languages: LangShare[];
+	    branches: string[];
+	    runs: CIRun[];
+	    docs: string[];
+	    templateForms: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new RepoOverview(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.description = source["description"];
+	        this.defaultBranch = source["defaultBranch"];
+	        this.languages = this.convertValues(source["languages"], LangShare);
+	        this.branches = source["branches"];
+	        this.runs = this.convertValues(source["runs"], CIRun);
+	        this.docs = source["docs"];
+	        this.templateForms = source["templateForms"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class UpdateEntry {
 	    path: string;

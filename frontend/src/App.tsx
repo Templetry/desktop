@@ -4,6 +4,7 @@ import {
     GetAuthStatus, StartGitHubLogin, Logout, GetOwners, CreateFullProject,
     ListRepos, OpenRepo, CloneRepo, GetSettings, SaveSettings, ExportSettings, ImportSettings,
     ScanProjects, OpenFolder, GetVersions, CheckUpdates, CheckDrift,
+    ListTemplateRepos, GetRepoOverview, GetRepoDoc, GetLocalOverview, GetLocalDoc,
     PreviewUpdate, UpdateFileContent, ApplyUpdate, InstallAppUpdate,
 } from "../wailsjs/go/main/App";
 import "./App.css";
@@ -36,7 +37,7 @@ function App() {
     const [result, setResult] = useState<{ url: string; dir: string } | null>(null);
     const [error, setError] = useState("");
     const [busy, setBusy] = useState(false);
-    const [view, setView] = useState<"create" | "repos" | "settings" | "projects">("create");
+    const [view, setView] = useState<"build" | "cloud" | "settings" | "local">("build");
     const [collapsed, setCollapsed] = useState(localStorage.getItem("tpl.sidebar") === "1");
     const toggleSidebar = () => {
         const v = !collapsed;
@@ -89,7 +90,24 @@ function App() {
         }).catch((e: any) => setError(String(e))).finally(() => setBusy(false));
     };
 
+    const reposDirSet = !!(settings.defaultParentDir || settings.lastParentDir);
+
+    // One-click fix for the "no repositories folder yet" callouts.
+    const chooseReposFolder = async () => {
+        const d = await ChooseParentDir();
+        if (!d) return;
+        const s = { ...settings, defaultParentDir: d };
+        setSettings(s);
+        setParentDir(d);
+        await SaveSettings(s);
+        loadProjects();
+    };
+
     const loadProjects = () => {
+        if (!reposDirSet) {
+            setProjects([]);
+            return;
+        }
         setBusy(true);
         ScanProjects().then((p: any[]) => setProjects(p ?? []))
             .catch((e: any) => setError(String(e)))
@@ -104,7 +122,73 @@ function App() {
         ListRepos().then((r: any[]) => setRepos(r ?? []))
             .catch((e: any) => setError(String(e)))
             .finally(() => setBusy(false));
+        ListTemplateRepos()
+            .then((names: string[]) => setTplRepos(Object.fromEntries((names ?? []).map((n) => [n, true]))))
+            .catch(() => {});
+        if (!projects.length) loadProjects();
     };
+
+    // Cloud & Local previews — state summary panels.
+    const [tplRepos, setTplRepos] = useState<Record<string, boolean>>({});
+    const [cloudPrev, setCloudPrev] = useState<any>(null);
+    const [cloudDoc, setCloudDoc] = useState("");
+    const [cloudDocText, setCloudDocText] = useState("");
+    const [localPrev, setLocalPrev] = useState<any>(null);
+    const [localDoc, setLocalDoc] = useState("");
+    const [localDocText, setLocalDocText] = useState("");
+
+    const openCloudDoc = (fullName: string, p: string) => {
+        setCloudDoc(p);
+        setCloudDocText("Loading…");
+        GetRepoDoc(fullName, p).then((t: string) => setCloudDocText(t))
+            .catch((e: any) => setCloudDocText(String(e)));
+    };
+
+    const openCloudPreview = (r: any) => {
+        setCloudPrev({ repo: r, data: null });
+        setCloudDoc(""); setCloudDocText("");
+        setTimeout(() => document.getElementById("cloudprev")?.scrollIntoView({ behavior: "smooth" }), 60);
+        GetRepoOverview(r.fullName).then((d: any) => {
+            setCloudPrev({ repo: r, data: d });
+            const readme = (d.docs ?? []).find((p: string) => p.toLowerCase() === "readme.md");
+            if (readme) openCloudDoc(r.fullName, readme);
+        }).catch((e: any) => { setError(String(e)); setCloudPrev(null); });
+    };
+
+    const openLocalDoc = (dir: string, p: string) => {
+        setLocalDoc(p);
+        setLocalDocText("Loading…");
+        GetLocalDoc(dir, p).then((t: string) => setLocalDocText(t))
+            .catch((e: any) => setLocalDocText(String(e)));
+    };
+
+    const openLocalPreview = (p: any) => {
+        setLocalPrev({ proj: p, data: null });
+        setLocalDoc(""); setLocalDocText("");
+        setTimeout(() => document.getElementById("localprev")?.scrollIntoView({ behavior: "smooth" }), 60);
+        GetLocalOverview(p.dir).then((d: any) => {
+            setLocalPrev({ proj: p, data: d });
+            const readme = (d.docs ?? []).find((x: string) => x.toLowerCase() === "readme.md");
+            if (readme) openLocalDoc(p.dir, readme);
+        }).catch((e: any) => { setError(String(e)); setLocalPrev(null); });
+    };
+
+    const ciGlyph = (r: any) => r.status !== "completed" ? "●" : r.conclusion === "success" ? "✓" : "✗";
+    const ciClass = (r: any) => r.status !== "completed" ? "run" : r.conclusion === "success" ? "ok" : "bad";
+
+    // owner/name (lowercased) of a github remote URL, "" for anything else.
+    const remoteFull = (u: string) => {
+        const m = /github\.com[/:]([^/]+\/.+?)(\.git)?$/i.exec(u ?? "");
+        return m ? m[1].toLowerCase() : "";
+    };
+    const localByRemote = useMemo(() => {
+        const map: Record<string, string> = {};
+        projects.forEach((p) => {
+            const k = remoteFull(p.remote);
+            if (k && !map[k]) map[k] = p.dir;
+        });
+        return map;
+    }, [projects]);
 
     const applyUi = (s: any) => {
         const root = document.documentElement;
@@ -115,12 +199,15 @@ function App() {
         (document.body.style as any).zoom = s?.uiScale || "1";
     };
 
-    const switchView = (v: "create" | "repos" | "settings" | "projects") => {
+    const switchView = (v: "build" | "cloud" | "settings" | "local") => {
         setView(v);
         setError("");
         setSettingsMsg("");
         setRepoMsg("");
+        setUpdMsg("");
     };
+
+    const login = () => StartGitHubLogin().then(setAuth).catch((e: any) => setError(String(e)));
 
     useEffect(() => {
         if (!settingsMsg) return;
@@ -139,6 +226,12 @@ function App() {
         const t = setTimeout(() => setError(""), 8000);
         return () => clearTimeout(t);
     }, [error]);
+
+    useEffect(() => {
+        if (!updMsg) return;
+        const t = setTimeout(() => setUpdMsg(""), 6000);
+        return () => clearTimeout(t);
+    }, [updMsg]);
 
     const loadCatalogs = () => {
         GetCatalogs().then((cs: any[]) => setCatalogs(cs ?? [])).catch((e: any) => setError(String(e)));
@@ -172,6 +265,7 @@ function App() {
                 setOwners(o);
                 if (!owner) setOwner(settings.defaultOwner && o.includes(settings.defaultOwner) ? settings.defaultOwner : o[0] ?? "");
             }).catch(() => {});
+            if (view === "cloud" && !repos.length) loadRepos();
         } else {
             setOwners([]);
             setOwner("");
@@ -254,8 +348,7 @@ function App() {
                         <span className="pendingchip">Code: <strong>{auth.userCode}</strong></span>
                     )}
                     {(auth.state === "logged_out" || auth.state === "error") && (
-                        <button className="primary"
-                            onClick={() => StartGitHubLogin().then(setAuth).catch((e: any) => setError(String(e)))}>
+                        <button className="primary" onClick={login}>
                             Sign in with GitHub
                         </button>
                     )}
@@ -269,44 +362,50 @@ function App() {
                 </button>
                 {collapsed ? (
                     <div className="rail">
-                        <button className={view === "create" ? "active" : ""} title="New project"
-                            onClick={() => switchView("create")}>+</button>
-                        <button className={view === "repos" ? "active" : ""} title="My repos"
-                            disabled={auth.state !== "logged_in"}
-                            onClick={() => { switchView("repos"); if (!repos.length) loadRepos(); }}>▤</button>
-                        <button className={view === "projects" ? "active" : ""} title="My projects"
-                            onClick={() => { switchView("projects"); loadProjects(); }}>▣</button>
+                        <button className={view === "build" ? "active" : ""} title="Build — new project"
+                            onClick={() => switchView("build")}>+</button>
+                        <button className={view === "cloud" ? "active" : ""} title="Cloud — GitHub repositories"
+                            onClick={() => { switchView("cloud"); if (auth.state === "logged_in" && !repos.length) loadRepos(); }}>▤</button>
+                        <button className={view === "local" ? "active" : ""} title="Local — repositories on disk"
+                            onClick={() => { switchView("local"); loadProjects(); }}>▣</button>
                     </div>
                 ) : (
                     <>
                         <div className="nav">
-                            <button className={view === "create" ? "active" : ""} onClick={() => switchView("create")}>
-                                New project
+                            <button className={view === "build" ? "active" : ""} onClick={() => switchView("build")}>
+                                Build
                             </button>
-                            <button className={view === "repos" ? "active" : ""} disabled={auth.state !== "logged_in"}
-                                onClick={() => { switchView("repos"); if (!repos.length) loadRepos(); }}>
-                                My repos
+                            <button className={view === "cloud" ? "active" : ""}
+                                onClick={() => { switchView("cloud"); if (auth.state === "logged_in" && !repos.length) loadRepos(); }}>
+                                Cloud
                             </button>
-                            <button className={view === "projects" ? "active" : ""}
-                                onClick={() => { switchView("projects"); loadProjects(); }}>
-                                My projects
+                            <button className={view === "local" ? "active" : ""}
+                                onClick={() => { switchView("local"); loadProjects(); }}>
+                                Local
                             </button>
                         </div>
-                        {view === "projects" && (
+                        {view === "local" && (
                             <div className="parent">
-                                <h2>Templates<em>{projects.length}</em></h2>
+                                <h2>Projects<em>{projects.length}</em></h2>
                                 <button className={`form ${projFilter === "" ? "active" : ""}`}
                                     onClick={() => setProjFilter("")}>
                                     <span>All</span>
                                     <em>{projects.length}</em>
                                 </button>
-                                {[...new Set(projects.map((p) => p.template))].map((t) => (
+                                {[...new Set(projects.filter((p) => p.kind !== "git").map((p) => p.template))].map((t) => (
                                     <button key={t} className={`form ${projFilter === t ? "active" : ""}`}
                                         onClick={() => setProjFilter(t)}>
                                         <span>{t}</span>
                                         <em>{projects.filter((p) => p.template === t).length}</em>
                                     </button>
                                 ))}
+                                {projects.some((p) => p.kind === "git") && (
+                                    <button className={`form ${projFilter === "::git" ? "active" : ""}`}
+                                        onClick={() => setProjFilter("::git")}>
+                                        <span>git repositories</span>
+                                        <em>{projects.filter((p) => p.kind === "git").length}</em>
+                                    </button>
+                                )}
                             </div>
                         )}
                         {view === "settings" && (
@@ -321,7 +420,7 @@ function App() {
                                 ))}
                             </div>
                         )}
-                        {view === "repos" && (
+                        {view === "cloud" && (
                             <div className="parent">
                                 <h2>Owners<em>{repos.length}</em></h2>
                                 <button className={`form ${ownerFilter === "" ? "active" : ""}`}
@@ -342,7 +441,7 @@ function App() {
                                 ))}
                             </div>
                         )}
-                        {view === "create" && catalogs.map((c) => (
+                        {view === "build" && catalogs.map((c) => (
                             <div key={c.name} className="catalog">
                                 <div className="cathead">
                                     <span>{c.name}</span>
@@ -379,9 +478,16 @@ function App() {
                         <div className="settingsgrid">
                         <section className="span2" id="sec-profile">
                             <h3>Profile</h3>
-                            {auth.state === "logged_in"
-                                ? <p>Signed in as <strong>@{auth.login}</strong></p>
-                                : <p className="hint">Not signed in.</p>}
+                            {auth.state === "logged_in" && <p>Signed in as <strong>@{auth.login}</strong></p>}
+                            {auth.state === "pending" && (
+                                <p className="hint">Signing in — enter the code <strong>{auth.userCode}</strong> on GitHub to finish.</p>
+                            )}
+                            {auth.state !== "logged_in" && auth.state !== "pending" && (
+                                <div className="callout">
+                                    <span>Not signed in — sign in to create cloud repositories and browse yours.</span>
+                                    <button className="primary" onClick={login}>Sign in with GitHub</button>
+                                </div>
+                            )}
                         </section>
                         <section id="sec-defaults">
                             <h3>Defaults</h3>
@@ -545,48 +651,138 @@ function App() {
                         </div>
                     </>
                 )}
-                {view === "projects" && (
+                {view === "local" && (
                     <>
-                        <header><h2>My projects</h2></header>
+                        <header><h2>Local — repositories on disk</h2></header>
+                        {!reposDirSet ? (
+                            <div className="callout">
+                                <span>My projects scans your repositories folder for Templetry projects and git repositories — choose that folder first.</span>
+                                <button className="primary" onClick={chooseReposFolder}>Choose folder…</button>
+                            </div>
+                        ) : (
+                        <>
                         <div className="outrow" style={{ marginTop: 16 }}>
                             <button onClick={loadProjects} disabled={busy}>Refresh</button>
                         </div>
                         {error && <pre className="error">{error}</pre>}
-                        <div className="repolist">
-                            {projects
-                                .filter((p) => !projFilter || p.template === projFilter)
-                                .map((p) => (
-                                    <div key={p.dir} className="repo">
-                                        <div className="repoinfo">
-                                            <strong>
-                                                {p.name}
-                                                {drifts[p.dir] && (
-                                                    <em className="driftchip"
-                                                        title={`Template moved: ${(p.commit ?? "").slice(0, 7)} → ${drifts[p.dir].slice(0, 7)}`}>
-                                                        template updated
-                                                    </em>
+                        {Object.entries(projects
+                            .filter((p) => !projFilter || (projFilter === "::git" ? p.kind === "git" : p.template === projFilter))
+                            .reduce((g: Record<string, any[]>, p: any) => {
+                                const rel = p.rel || p.name;
+                                const folder = rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "";
+                                (g[folder] ??= []).push(p);
+                                return g;
+                            }, {}))
+                            .sort(([a], [b]) => a.localeCompare(b))
+                            .map(([folder, list]) => (
+                            <div key={folder || "(root)"}>
+                                <h3 className="folderhead">{folder || "·"}<em>{(list as any[]).length}</em></h3>
+                                <div className="repolist" style={{ marginTop: 8 }}>
+                                    {(list as any[]).map((p) => (
+                                        <div key={p.dir} className="repo">
+                                            <div className="repoinfo">
+                                                <strong>
+                                                    {p.name}
+                                                    {p.kind === "git" && <em className="gitchip">git</em>}
+                                                    {drifts[p.dir] && (
+                                                        <em className="driftchip"
+                                                            title={`Template moved: ${(p.commit ?? "").slice(0, 7)} → ${drifts[p.dir].slice(0, 7)}`}>
+                                                            template updated
+                                                        </em>
+                                                    )}
+                                                </strong>
+                                                <span className="meta">
+                                                    {p.kind === "git"
+                                                        ? [p.branch, p.remote || "local repository — no remote"].filter(Boolean).join(" · ")
+                                                        : `${p.template} · ${p.source}`}
+                                                </span>
+                                                {p.kind !== "git" && (
+                                                    <span className="desc">
+                                                        {Object.entries(p.variables ?? {}).map(([k, v]) => `${k}=${v}`).join(" · ")}
+                                                        {Object.entries(p.features ?? {}).filter(([, on]) => on).length > 0 &&
+                                                            ` · features: ${Object.entries(p.features ?? {}).filter(([, on]) => on).map(([k]) => k).join(", ")}`}
+                                                    </span>
                                                 )}
-                                            </strong>
-                                            <span className="meta">{p.template} · {p.source}</span>
-                                            <span className="desc">
-                                                {Object.entries(p.variables ?? {}).map(([k, v]) => `${k}=${v}`).join(" · ")}
-                                                {Object.entries(p.features ?? {}).filter(([, on]) => on).length > 0 &&
-                                                    ` · features: ${Object.entries(p.features ?? {}).filter(([, on]) => on).map(([k]) => k).join(", ")}`}
-                                            </span>
+                                            </div>
+                                            <div className="repoactions">
+                                                {drifts[p.dir] && (
+                                                    <button className="primary" disabled={busy}
+                                                        onClick={() => previewUpdate(p.dir)}>Preview update</button>
+                                                )}
+                                                <button title="Repo state: branches, remotes, docs"
+                                                    onClick={() => openLocalPreview(p)}>▤ Preview</button>
+                                                {(p.remote ?? "").startsWith("http") && (
+                                                    <button title="Open origin in the browser"
+                                                        onClick={() => OpenRepo(p.remote.replace(/\.git$/, ""))}>↗ Remote</button>
+                                                )}
+                                                <button title="Show in the file explorer"
+                                                    onClick={() => OpenFolder(p.dir)}>⌂ Folder</button>
+                                            </div>
                                         </div>
-                                        <div className="repoactions">
-                                            {drifts[p.dir] && (
-                                                <button className="primary" disabled={busy}
-                                                    onClick={() => previewUpdate(p.dir)}>Preview update</button>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                        {!projects.length && !busy && (
+                            <div className="empty">Nothing here yet — no Templetry projects or git repositories found in your repositories folder.</div>
+                        )}
+                        {localPrev && (
+                            <section id="localprev">
+                                <h3>
+                                    {localPrev.proj.rel || localPrev.proj.name}
+                                    {localPrev.data?.branch && <em className="gitchip">{localPrev.data.branch}</em>}
+                                </h3>
+                                {!localPrev.data ? (
+                                    <p className="hint">Loading overview…</p>
+                                ) : (
+                                    <>
+                                        <div className="ovgrid">
+                                            <p className="ovrow"><span>Branches</span>
+                                                {(localPrev.data.branches ?? []).join(" · ") || "—"}
+                                            </p>
+                                            <p className="ovrow"><span>Remotes</span>
+                                                {(localPrev.data.remotes ?? []).length
+                                                    ? (localPrev.data.remotes ?? []).map((r: any) => `${r.name} → ${r.url}`).join(" · ")
+                                                    : "none"}
+                                            </p>
+                                            {localPrev.data.lastCommit && (
+                                                <p className="ovrow"><span>Last commit</span>{localPrev.data.lastCommit}</p>
                                             )}
-                                            <button onClick={() => OpenFolder(p.dir)}>Open folder</button>
+                                            <p className="ovrow"><span>Working tree</span>
+                                                {localPrev.data.changes < 0 ? "unknown"
+                                                    : localPrev.data.changes === 0 ? "clean"
+                                                    : `${localPrev.data.changes} uncommitted change${localPrev.data.changes === 1 ? "" : "s"}`}
+                                            </p>
+                                            {localPrev.proj.kind === "templetry" && (
+                                                <p className="ovrow tplrow"><span>Template</span>
+                                                    {localPrev.proj.template} · {localPrev.proj.source}
+                                                </p>
+                                            )}
                                         </div>
-                                    </div>
-                                ))}
-                            {!projects.length && !busy && (
-                                <div className="empty">No Templetry projects found in your repositories folder yet.</div>
-                            )}
-                        </div>
+                                        {(localPrev.data.docs ?? []).length > 0 && (
+                                            <div className="preview" style={{ height: 320, marginTop: 12 }}>
+                                                <div className="ptree">
+                                                    {(localPrev.data.docs ?? []).map((p: string) => (
+                                                        <button key={p} className={`pfile ${localDoc === p ? "active" : ""}`}
+                                                            onClick={() => openLocalDoc(localPrev.proj.dir, p)}>
+                                                            <span>{p}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <pre className="pcontent">
+                                                    {localDoc ? localDocText : "Select a document to read it."}
+                                                </pre>
+                                            </div>
+                                        )}
+                                        <div className="actions">
+                                            <button onClick={() => setLocalPrev(null)}>Dismiss</button>
+                                        </div>
+                                    </>
+                                )}
+                            </section>
+                        )}
+                        </>
+                        )}
                         {updPrev && (
                             <section id="updpanel">
                                 <h3>
@@ -632,9 +828,26 @@ function App() {
                         {repoMsg && <pre className="output">{repoMsg}</pre>}
                     </>
                 )}
-                {view === "repos" && (
+                {view === "cloud" && (
                     <>
-                        <header><h2>My repositories</h2></header>
+                        <header><h2>Cloud — GitHub repositories</h2></header>
+                        {auth.state !== "logged_in" ? (
+                            <div className="callout">
+                                <span>Your GitHub repositories appear here once you sign in.
+                                    {auth.state === "pending" && <> Enter the code shown in the top bar to finish signing in.</>}
+                                </span>
+                                {auth.state !== "pending" && (
+                                    <button className="primary" onClick={login}>Sign in with GitHub</button>
+                                )}
+                            </div>
+                        ) : (
+                        <>
+                        {!reposDirSet && (
+                            <div className="callout">
+                                <span>Clone needs a repositories folder to clone into — choose it once and it sticks.</span>
+                                <button className="primary" onClick={chooseReposFolder}>Choose folder…</button>
+                            </div>
+                        )}
                         <div className="outrow" style={{ marginTop: 16 }}>
                             <input placeholder="Search…" value={repoFilter}
                                 onChange={(e) => setRepoFilter(e.target.value)} />
@@ -649,7 +862,15 @@ function App() {
                                 .map((r) => (
                                     <div key={r.fullName} className={`repo ${r.archived ? "archived" : ""}`}>
                                         <div className="repoinfo">
-                                            <strong>{r.fullName}</strong>
+                                            <strong>
+                                                {r.fullName}
+                                                {tplRepos[r.fullName.toLowerCase()] && (
+                                                    <em className="driftchip" title="Contains a template.yml the engine can render">template</em>
+                                                )}
+                                                {localByRemote[r.fullName.toLowerCase()] && (
+                                                    <em className="gitchip" title={localByRemote[r.fullName.toLowerCase()]}>cloned</em>
+                                                )}
+                                            </strong>
                                             <span className="meta">
                                                 {r.private ? "private" : "public"}
                                                 {r.language ? ` · ${r.language}` : ""}
@@ -659,23 +880,95 @@ function App() {
                                             {r.description && <span className="desc">{r.description}</span>}
                                         </div>
                                         <div className="repoactions">
-                                            <button onClick={() => OpenRepo(r.htmlUrl)}>Open</button>
-                                            <button disabled={busy} onClick={() => {
-                                                setBusy(true); setError(""); setRepoMsg("");
-                                                CloneRepo(r.cloneUrl, r.name)
-                                                    .then((d: string) => setRepoMsg(`Cloned: ${d}`))
-                                                    .catch((e: any) => setError(String(e)))
-                                                    .finally(() => setBusy(false));
-                                            }}>Clone</button>
+                                            <button title="Repo state: branches, CI, docs"
+                                                onClick={() => openCloudPreview(r)}>▤ Preview</button>
+                                            <button title="Open on GitHub" onClick={() => OpenRepo(r.htmlUrl)}>↗ Open</button>
+                                            {localByRemote[r.fullName.toLowerCase()] ? (
+                                                <button title="Show the local clone in the file explorer"
+                                                    onClick={() => OpenFolder(localByRemote[r.fullName.toLowerCase()])}>
+                                                    ⌂ Folder
+                                                </button>
+                                            ) : (
+                                                <button disabled={busy} title="Clone into your repositories folder" onClick={() => {
+                                                    setBusy(true); setError(""); setRepoMsg("");
+                                                    CloneRepo(r.cloneUrl, r.name)
+                                                        .then((d: string) => { setRepoMsg(`Cloned: ${d}`); loadProjects(); })
+                                                        .catch((e: any) => setError(String(e)))
+                                                        .finally(() => setBusy(false));
+                                                }}>↓ Clone</button>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
                             {!repos.length && !busy && <div className="empty">No repositories loaded.</div>}
                         </div>
+                        {cloudPrev && (
+                            <section id="cloudprev">
+                                <h3>
+                                    {cloudPrev.repo.fullName}
+                                    {cloudPrev.data?.defaultBranch && <em className="gitchip">{cloudPrev.data.defaultBranch}</em>}
+                                </h3>
+                                {!cloudPrev.data ? (
+                                    <p className="hint">Loading overview…</p>
+                                ) : (
+                                    <>
+                                        {cloudPrev.data.description && <p className="ovdesc">{cloudPrev.data.description}</p>}
+                                        <div className="ovgrid">
+                                            {(cloudPrev.data.languages ?? []).length > 0 && (
+                                                <p className="ovrow"><span>Languages</span>
+                                                    {(cloudPrev.data.languages ?? []).map((l: any) => `${l.name} ${l.pct}%`).join(" · ")}
+                                                </p>
+                                            )}
+                                            <p className="ovrow"><span>Branches</span>
+                                                {(cloudPrev.data.branches ?? []).join(" · ") || "—"}
+                                            </p>
+                                            {(cloudPrev.data.templateForms ?? []).length > 0 && (
+                                                <p className="ovrow tplrow"><span>Template</span>
+                                                    engine-readable — {(cloudPrev.data.templateForms ?? [])
+                                                        .map((f: string) => f === "." ? "(root)" : f).join(" · ")}
+                                                </p>
+                                            )}
+                                        </div>
+                                        {(cloudPrev.data.runs ?? []).length > 0 && (
+                                            <div className="cirows">
+                                                {(cloudPrev.data.runs ?? []).map((r: any, i: number) => (
+                                                    <button key={i} className="cirow" title="Open the run on GitHub"
+                                                        onClick={() => OpenRepo(r.url)}>
+                                                        <em className={ciClass(r)}>{ciGlyph(r)}</em>
+                                                        <span>{r.name}</span>
+                                                        <span className="meta">{r.branch} · {String(r.updatedAt).slice(0, 10)}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {(cloudPrev.data.docs ?? []).length > 0 && (
+                                            <div className="preview" style={{ height: 320, marginTop: 12 }}>
+                                                <div className="ptree">
+                                                    {(cloudPrev.data.docs ?? []).map((p: string) => (
+                                                        <button key={p} className={`pfile ${cloudDoc === p ? "active" : ""}`}
+                                                            onClick={() => openCloudDoc(cloudPrev.repo.fullName, p)}>
+                                                            <span>{p}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <pre className="pcontent">
+                                                    {cloudDoc ? cloudDocText : "Select a document to read it."}
+                                                </pre>
+                                            </div>
+                                        )}
+                                        <div className="actions">
+                                            <button onClick={() => setCloudPrev(null)}>Dismiss</button>
+                                        </div>
+                                    </>
+                                )}
+                            </section>
+                        )}
+                        </>
+                        )}
                     </>
                 )}
-                {view === "create" && !selected && <div className="empty">Pick a template form to start.</div>}
-                {view === "create" && selected && manifest && (
+                {view === "build" && !selected && <div className="empty">Pick a template form to start.</div>}
+                {view === "build" && selected && manifest && (
                     <>
                         <header>
                             <h2>{manifest.name}</h2>
@@ -756,6 +1049,7 @@ function App() {
                                 <button onClick={async () => setParentDir((await ChooseParentDir()) || parentDir)}>Browse…</button>
                             </div>
                             {targetPath && <p className="hint">Will create: {targetPath}</p>}
+                            {!parentDir && <p className="hint">Required — Create stays disabled until you choose a folder.</p>}
                         </section>
 
                         <div className="actions">
@@ -800,7 +1094,7 @@ function App() {
                         </div>
                     </>
                 )}
-                {view === "create" && selected && !manifest && !error && <div className="empty">Fetching template…</div>}
+                {view === "build" && selected && !manifest && !error && <div className="empty">Fetching template…</div>}
             </main>
             </div>
         </div>
