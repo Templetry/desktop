@@ -5,63 +5,141 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/Templetry/engine/source"
 	"github.com/goccy/go-yaml"
 )
 
-// LocalProject is one Templetry-born project found on disk.
+// LocalProject is one project found on disk: a Templetry-born render
+// (kind "templetry") or a plain git repository (kind "git").
 type LocalProject struct {
 	Dir       string            `json:"dir"`
 	Name      string            `json:"name"`
-	Template  string            `json:"template"`
-	Source    string            `json:"source"`
-	Commit    string            `json:"commit"`
-	Variables map[string]string `json:"variables"`
-	Features  map[string]bool   `json:"features"`
+	Rel       string            `json:"rel"`
+	Kind      string            `json:"kind"`
+	Remote    string            `json:"remote,omitempty"`
+	Branch    string            `json:"branch,omitempty"`
+	Template  string            `json:"template,omitempty"`
+	Source    string            `json:"source,omitempty"`
+	Commit    string            `json:"commit,omitempty"`
+	Variables map[string]string `json:"variables,omitempty"`
+	Features  map[string]bool   `json:"features,omitempty"`
 }
 
-// ScanProjects walks the repositories folder looking for
-// .templetry-answers.yml files — the provenance record every render writes.
+// maxScanDepth bounds the recursive walk of the repositories folder.
+const maxScanDepth = 4
+
+// ScanProjects walks the repositories folder recursively looking for
+// Templetry projects (.templetry-answers.yml) and plain git repositories.
+// A found project or repo is a leaf — its subtree is never descended into.
 func (a *App) ScanProjects() ([]LocalProject, error) {
 	parent := effectiveParentDir()
 	if parent == "" {
 		return nil, fmt.Errorf("set your repositories folder in Settings first")
 	}
-	entries, err := os.ReadDir(parent)
-	if err != nil {
-		return nil, err
+	if _, err := os.Stat(parent); err != nil {
+		return nil, fmt.Errorf("repositories folder %s does not exist — update it in Settings", parent)
 	}
 	out := []LocalProject{}
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		dir := filepath.Join(parent, e.Name())
-		data, err := os.ReadFile(filepath.Join(dir, ".templetry-answers.yml"))
-		if err != nil {
-			continue
-		}
-		var ans struct {
-			Template struct {
-				Name   string `yaml:"name"`
-				Source string `yaml:"source"`
-				Commit string `yaml:"commit"`
-			} `yaml:"template"`
-			Variables map[string]string `yaml:"variables"`
-			Features  map[string]bool   `yaml:"features"`
-		}
-		if err := yaml.Unmarshal(data, &ans); err != nil {
-			continue
-		}
-		out = append(out, LocalProject{
-			Dir: dir, Name: e.Name(),
-			Template: ans.Template.Name, Source: ans.Template.Source, Commit: ans.Template.Commit,
-			Variables: ans.Variables, Features: ans.Features,
-		})
-	}
+	scanDir(parent, parent, 0, &out)
 	return out, nil
+}
+
+func scanDir(root, dir string, depth int, out *[]LocalProject) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		if !e.IsDir() || strings.HasPrefix(e.Name(), ".") || e.Name() == "node_modules" {
+			continue
+		}
+		sub := filepath.Join(dir, e.Name())
+		rel, _ := filepath.Rel(root, sub)
+		if p, ok := readAnswers(sub); ok {
+			p.Name = e.Name()
+			p.Rel = filepath.ToSlash(rel)
+			p.Remote = gitRemote(sub)
+			p.Branch = gitBranch(sub)
+			*out = append(*out, p)
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(sub, ".git")); err == nil {
+			*out = append(*out, LocalProject{
+				Dir: sub, Name: e.Name(), Rel: filepath.ToSlash(rel),
+				Kind: "git", Remote: gitRemote(sub), Branch: gitBranch(sub),
+			})
+			continue
+		}
+		if depth+1 < maxScanDepth {
+			scanDir(root, sub, depth+1, out)
+		}
+	}
+}
+
+// readAnswers loads a project's provenance record, if the directory has one.
+func readAnswers(dir string) (LocalProject, bool) {
+	data, err := os.ReadFile(filepath.Join(dir, ".templetry-answers.yml"))
+	if err != nil {
+		return LocalProject{}, false
+	}
+	var ans struct {
+		Template struct {
+			Name   string `yaml:"name"`
+			Source string `yaml:"source"`
+			Commit string `yaml:"commit"`
+		} `yaml:"template"`
+		Variables map[string]string `yaml:"variables"`
+		Features  map[string]bool   `yaml:"features"`
+	}
+	if err := yaml.Unmarshal(data, &ans); err != nil {
+		return LocalProject{}, false
+	}
+	return LocalProject{
+		Dir: dir, Kind: "templetry",
+		Template: ans.Template.Name, Source: ans.Template.Source, Commit: ans.Template.Commit,
+		Variables: ans.Variables, Features: ans.Features,
+	}, true
+}
+
+// gitRemote reads origin's URL straight from .git/config — no git spawn.
+func gitRemote(dir string) string {
+	data, err := os.ReadFile(filepath.Join(dir, ".git", "config"))
+	if err != nil {
+		return ""
+	}
+	inOrigin := false
+	for _, line := range strings.Split(string(data), "\n") {
+		t := strings.TrimSpace(line)
+		if strings.HasPrefix(t, "[") {
+			inOrigin = t == `[remote "origin"]`
+			continue
+		}
+		if inOrigin {
+			if k, v, ok := strings.Cut(t, "="); ok && strings.TrimSpace(k) == "url" {
+				return strings.TrimSpace(v)
+			}
+		}
+	}
+	return ""
+}
+
+// gitBranch reads .git/HEAD directly — branch name, or a short sha when detached.
+func gitBranch(dir string) string {
+	data, err := os.ReadFile(filepath.Join(dir, ".git", "HEAD"))
+	if err != nil {
+		return ""
+	}
+	head := strings.TrimSpace(string(data))
+	if name, ok := strings.CutPrefix(head, "ref: refs/heads/"); ok {
+		return name
+	}
+	if len(head) > 7 {
+		return head[:7]
+	}
+	return head
 }
 
 // Drift marks a project whose template moved past the recorded commit.
@@ -83,7 +161,7 @@ func (a *App) CheckDrift() ([]Drift, error) {
 	cache := map[string]string{}
 	out := []Drift{}
 	for _, p := range projects {
-		if p.Commit == "" || !strings.HasPrefix(p.Source, "github.com/") {
+		if p.Kind != "templetry" || p.Commit == "" || !strings.HasPrefix(p.Source, "github.com/") {
 			continue
 		}
 		rest := strings.TrimPrefix(p.Source, "github.com/")
@@ -106,6 +184,94 @@ func (a *App) CheckDrift() ([]Drift, error) {
 		}
 	}
 	return out, nil
+}
+
+// LocalRemote is one configured git remote.
+type LocalRemote struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
+// LocalOverview is the Local preview: state summary of one repo on disk.
+type LocalOverview struct {
+	Branch     string        `json:"branch"`
+	Branches   []string      `json:"branches"`
+	Remotes    []LocalRemote `json:"remotes"`
+	LastCommit string        `json:"lastCommit"`
+	Changes    int           `json:"changes"`
+	Docs       []string      `json:"docs"`
+}
+
+// gitOut runs a read-only git command in dir; ok=false when git fails.
+func gitOut(dir string, args ...string) (string, bool) {
+	out, err := exec.Command("git", append([]string{"-C", dir}, args...)...).Output()
+	if err != nil {
+		return "", false
+	}
+	return strings.TrimSpace(string(out)), true
+}
+
+// GetLocalOverview assembles the Local preview for one repo directory.
+// Git failures degrade to partial data, never to an error.
+func (a *App) GetLocalOverview(dir string) (LocalOverview, error) {
+	out := LocalOverview{Branch: gitBranch(dir), Changes: -1}
+	if s, ok := gitOut(dir, "branch", "--format=%(refname:short)"); ok && s != "" {
+		out.Branches = strings.Split(s, "\n")
+	}
+	if s, ok := gitOut(dir, "remote"); ok && s != "" {
+		for _, name := range strings.Split(s, "\n") {
+			if u, ok := gitOut(dir, "remote", "get-url", name); ok {
+				out.Remotes = append(out.Remotes, LocalRemote{name, u})
+			}
+		}
+	}
+	if s, ok := gitOut(dir, "log", "-1", "--format=%h · %s · %cs"); ok {
+		out.LastCommit = s
+	}
+	if s, ok := gitOut(dir, "status", "--porcelain"); ok {
+		if s == "" {
+			out.Changes = 0
+		} else {
+			out.Changes = len(strings.Split(s, "\n"))
+		}
+	}
+	for _, sub := range []string{"", "docs"} {
+		entries, err := os.ReadDir(filepath.Join(dir, sub))
+		if err != nil {
+			continue
+		}
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasSuffix(strings.ToLower(e.Name()), ".md") || len(out.Docs) >= 40 {
+				continue
+			}
+			out.Docs = append(out.Docs, filepath.ToSlash(filepath.Join(sub, e.Name())))
+		}
+	}
+	sort.SliceStable(out.Docs, func(i, j int) bool {
+		ri := strings.EqualFold(out.Docs[i], "README.md")
+		rj := strings.EqualFold(out.Docs[j], "README.md")
+		if ri != rj {
+			return ri
+		}
+		return out.Docs[i] < out.Docs[j]
+	})
+	return out, nil
+}
+
+// GetLocalDoc reads one markdown file inside a scanned repo directory.
+func (a *App) GetLocalDoc(dir, rel string) (string, error) {
+	clean := filepath.Clean(rel)
+	if filepath.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("invalid path")
+	}
+	data, err := os.ReadFile(filepath.Join(dir, clean))
+	if err != nil {
+		return "", err
+	}
+	if len(data) > 512*1024 {
+		data = data[:512*1024]
+	}
+	return string(data), nil
 }
 
 // OpenFolder shows a project directory in the system file explorer.
