@@ -36,8 +36,10 @@ func engineVersion() string {
 }
 
 // GetVersions returns the running app and embedded engine versions.
+// The app version is normalized without the tag's "v" prefix — the UI
+// adds its own prefix when displaying it.
 func (a *App) GetVersions() VersionInfo {
-	return VersionInfo{App: version, Engine: engineVersion()}
+	return VersionInfo{App: norm(version), Engine: engineVersion()}
 }
 
 // UpdateInfo reports the latest published releases.
