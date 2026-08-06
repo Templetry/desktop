@@ -571,6 +571,51 @@ body.layout-stacked .sidecol { position: static; }
 body.layout-stacked .preview { height: 420px; }
 body.layout-stacked .previewempty { display: none; }
 
+/* -- Markdown doc reader ------------------------------ */
+.pcontent.md {
+    white-space: normal;
+    font-family: inherit;
+    font-size: 13.5px;
+    line-height: 1.55;
+}
+.md h1, .md h2, .md h3, .md h4 { color: var(--linen); margin: 16px 0 6px; font-weight: 650; }
+.md h1 { font-size: 18px; border-bottom: 1px dashed var(--thread); padding-bottom: 6px; margin-top: 4px; }
+.md h2 { font-size: 15.5px; }
+.md h3 { font-size: 14px; }
+.md h4 { font-size: 13px; }
+.md p { margin: 8px 0; color: #c3c1b8; }
+.md a { color: var(--brass); text-decoration: underline; cursor: pointer; }
+.md code {
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    background: var(--ink-2);
+    border: 1px solid var(--thread);
+    border-radius: 4px;
+    padding: 1px 5px;
+}
+.md pre {
+    background: var(--ink-2);
+    border: 1px solid var(--thread);
+    border-radius: 6px;
+    padding: 10px 12px;
+    overflow-x: auto;
+    margin: 10px 0;
+}
+.md pre code { border: 0; padding: 0; background: none; }
+.md ul, .md ol { margin: 8px 0 8px 22px; color: #c3c1b8; }
+.md li { margin: 3px 0; }
+.md blockquote {
+    border-left: 3px solid var(--brass-deep);
+    margin: 10px 0;
+    padding: 2px 12px;
+    color: var(--linen-dim);
+}
+.md table { border-collapse: collapse; margin: 10px 0; font-size: 12.5px; }
+.md th, .md td { border: 1px solid var(--thread); padding: 5px 10px; text-align: left; color: #c3c1b8; }
+.md th { color: var(--brass); }
+.md img { max-width: 100%; }
+.md hr { border: 0; border-top: 1px dashed var(--thread); margin: 14px 0; }
+
 /* -- Repos ------------------------------------------- */
 .repolist { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
 @media (min-width: 1100px) {

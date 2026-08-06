@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { marked } from "marked";
+import DOMPurify from "dompurify";
 import {
     GetCatalogs, GetTemplate, PreviewProject, PreviewFile, ChooseParentDir, GetLastParentDir,
     GetAuthStatus, StartGitHubLogin, Logout, GetOwners, CreateFullProject,
@@ -16,6 +18,34 @@ type Feature = { key: string; label?: string; default?: boolean };
 type Manifest = { name: string; description?: string; variables?: Variable[]; features?: Feature[] };
 
 const LICENSES = ["", "mit", "apache-2.0", "gpl-3.0", "bsd-3-clause", "mpl-2.0", "unlicense"];
+
+// resolveDoc joins a relative markdown link against the current doc's folder.
+function resolveDoc(from: string, href: string) {
+    const parts = from.includes("/") ? from.slice(0, from.lastIndexOf("/")).split("/") : [];
+    for (const seg of href.split("#")[0].split("/")) {
+        if (!seg || seg === ".") continue;
+        if (seg === "..") parts.pop(); else parts.push(seg);
+    }
+    return parts.join("/");
+}
+
+// Markdown renders a doc as sanitized HTML; link clicks go through onLink.
+function Markdown({ text, onLink }: { text: string; onLink: (href: string) => void }) {
+    const html = useMemo(
+        () => DOMPurify.sanitize(marked.parse(text, { async: false }) as string),
+        [text],
+    );
+    return (
+        <div className="pcontent md"
+            onClick={(e) => {
+                const a = (e.target as HTMLElement).closest("a");
+                if (!a) return;
+                e.preventDefault();
+                onLink(a.getAttribute("href") ?? "");
+            }}
+            dangerouslySetInnerHTML={{ __html: html }} />
+    );
+}
 
 function App() {
     const [catalogs, setCatalogs] = useState<any[]>([]);
@@ -175,6 +205,23 @@ function App() {
 
     const ciGlyph = (r: any) => r.status !== "completed" ? "●" : r.conclusion === "success" ? "✓" : "✗";
     const ciClass = (r: any) => r.status !== "completed" ? "run" : r.conclusion === "success" ? "ok" : "bad";
+
+    // Doc links: external ones open in the browser; relative .md ones
+    // navigate inside the doc reader itself.
+    const cloudLink = (href: string) => {
+        if (/^https?:/i.test(href)) { OpenRepo(href); return; }
+        const target = resolveDoc(cloudDoc, href);
+        if (target.toLowerCase().endsWith(".md") && cloudPrev?.repo) {
+            openCloudDoc(cloudPrev.repo.fullName, target);
+        }
+    };
+    const localLink = (href: string) => {
+        if (/^https?:/i.test(href)) { OpenRepo(href); return; }
+        const target = resolveDoc(localDoc, href);
+        if (target.toLowerCase().endsWith(".md") && localPrev?.proj) {
+            openLocalDoc(localPrev.proj.dir, target);
+        }
+    };
 
     // owner/name (lowercased) of a github remote URL, "" for anything else.
     const remoteFull = (u: string) => {
@@ -769,9 +816,9 @@ function App() {
                                                         </button>
                                                     ))}
                                                 </div>
-                                                <pre className="pcontent">
-                                                    {localDoc ? localDocText : "Select a document to read it."}
-                                                </pre>
+                                                {localDoc
+                                                    ? <Markdown text={localDocText} onLink={localLink} />
+                                                    : <pre className="pcontent">Select a document to read it.</pre>}
                                             </div>
                                         )}
                                         <div className="actions">
@@ -951,9 +998,9 @@ function App() {
                                                         </button>
                                                     ))}
                                                 </div>
-                                                <pre className="pcontent">
-                                                    {cloudDoc ? cloudDocText : "Select a document to read it."}
-                                                </pre>
+                                                {cloudDoc
+                                                    ? <Markdown text={cloudDocText} onLink={cloudLink} />
+                                                    : <pre className="pcontent">Select a document to read it.</pre>}
                                             </div>
                                         )}
                                         <div className="actions">
