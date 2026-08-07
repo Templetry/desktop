@@ -681,6 +681,9 @@ function App() {
                             <p>Embedded engine <strong>{versions.engine ?? "?"}</strong>
                                 {updates?.engineUpdate && <> — <a onClick={() => OpenRepo(updates.engineUrl)} className="upd">engine {updates.engineLatest} released</a></>}
                             </p>
+                            {updates?.engineUpdate && (
+                                <p className="hint">The engine ships inside the app — a newer engine arrives with the next app update, it cannot be updated separately.</p>
+                            )}
                             <div className="actions" style={{ marginTop: 14 }}>
                                 <button onClick={() => checkUpdates(true)}>Check for updates</button>
                                 {updates?.appUpdate && (
