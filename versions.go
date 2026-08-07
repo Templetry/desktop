@@ -115,7 +115,10 @@ func (a *App) InstallAppUpdate() (string, error) {
 		return "", err
 	}
 	tmp.Close()
-	if err := exec.Command(tmp.Name()).Start(); err != nil {
+	// The NSIS installer installs machine-wide and carries an elevation
+	// manifest — plain CreateProcess fails with "requires elevation".
+	// cmd's start goes through ShellExecute, which shows the UAC prompt.
+	if err := exec.Command("cmd", "/C", "start", "", tmp.Name()).Start(); err != nil {
 		return "", fmt.Errorf("could not launch the installer: %w", err)
 	}
 	go func() {
