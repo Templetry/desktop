@@ -13,6 +13,7 @@ import (
 	"github.com/Templetry/engine/planner"
 	"github.com/Templetry/engine/render"
 	"github.com/Templetry/engine/source"
+	"github.com/Templetry/engine/update"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -28,10 +29,7 @@ type App struct {
 	authRestored bool
 	preview      *source.FileSet
 
-	updDir     string
-	updFiles   *source.FileSet
-	updEntries []UpdateEntry
-	updMerged  map[string][]byte
+	upd *update.Preview
 }
 
 type bundle struct {
