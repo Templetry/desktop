@@ -493,6 +493,8 @@ export namespace manifest {
 	    default?: boolean;
 	    files?: string[];
 	    patches?: Patch[];
+	    requires?: string[];
+	    conflicts?: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new Feature(source);
@@ -505,6 +507,8 @@ export namespace manifest {
 	        this.default = source["default"];
 	        this.files = source["files"];
 	        this.patches = this.convertValues(source["patches"], Patch);
+	        this.requires = source["requires"];
+	        this.conflicts = source["conflicts"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -537,6 +541,22 @@ export namespace manifest {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.image = source["image"];
 	        this.run = source["run"];
+	    }
+	}
+	export class Preset {
+	    key: string;
+	    label?: string;
+	    features: Record<string, boolean>;
+	
+	    static createFrom(source: any = {}) {
+	        return new Preset(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.label = source["label"];
+	        this.features = source["features"];
 	    }
 	}
 	export class Rename {
@@ -584,6 +604,7 @@ export namespace manifest {
 	    variables?: Variable[];
 	    identity?: Rename[];
 	    features?: Feature[];
+	    presets?: Preset[];
 	    verify?: Verify;
 	
 	    static createFrom(source: any = {}) {
@@ -600,6 +621,7 @@ export namespace manifest {
 	        this.variables = this.convertValues(source["variables"], Variable);
 	        this.identity = this.convertValues(source["identity"], Rename);
 	        this.features = this.convertValues(source["features"], Feature);
+	        this.presets = this.convertValues(source["presets"], Preset);
 	        this.verify = this.convertValues(source["verify"], Verify);
 	    }
 	
@@ -621,6 +643,7 @@ export namespace manifest {
 		    return a;
 		}
 	}
+	
 	
 	
 	

@@ -15,7 +15,8 @@ type Form = { form: string; name: string; path: string; status: string; descript
 type Parent = { key: string; label?: string; repo: string; ref: string; forms: Form[] };
 type Variable = { key: string; label?: string; type?: string; pattern?: string; options?: string[]; default?: string };
 type Feature = { key: string; label?: string; default?: boolean };
-type Manifest = { name: string; description?: string; variables?: Variable[]; features?: Feature[] };
+type Preset = { key: string; label?: string; features?: Record<string, boolean> };
+type Manifest = { name: string; description?: string; variables?: Variable[]; features?: Feature[]; presets?: Preset[] };
 
 const LICENSES = ["", "mit", "apache-2.0", "gpl-3.0", "bsd-3-clause", "mpl-2.0", "unlicense"];
 
@@ -1044,6 +1045,24 @@ function App() {
                                         )}
                                     </label>
                                 ))}
+                                {(manifest.presets ?? []).length > 0 && (
+                                    <div className="field">
+                                        <span>Preset</span>
+                                        <div className="seg">
+                                            {(manifest.presets ?? []).map((p) => (
+                                                <button key={p.key} title="Apply this feature combo (you can still adjust below)"
+                                                    onClick={() => {
+                                                        const f: Record<string, boolean> = {};
+                                                        (manifest.features ?? []).forEach((x) => { f[x.key] = x.default ?? false; });
+                                                        Object.entries(p.features ?? {}).forEach(([k, v]) => { f[k] = v; });
+                                                        setFeats(f);
+                                                    }}>
+                                                    {p.label ?? p.key}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                                 {(manifest.features ?? []).length > 0 && (
                                     <div className="features">
                                         {(manifest.features ?? []).map((f) => (

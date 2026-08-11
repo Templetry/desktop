@@ -3,7 +3,7 @@ module desktop
 go 1.26
 
 require (
-	github.com/Templetry/engine v1.1.0
+	github.com/Templetry/engine v1.3.0
 	github.com/goccy/go-yaml v1.19.2
 	github.com/wailsapp/wails/v2 v2.13.0
 	github.com/zalando/go-keyring v0.2.8
@@ -11,6 +11,7 @@ require (
 
 require (
 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
+	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.10.0 // indirect
 	github.com/danieljoos/wincred v1.2.3 // indirect
