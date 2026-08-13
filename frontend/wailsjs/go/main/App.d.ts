@@ -4,6 +4,8 @@ import {main} from '../models';
 import {manifest} from '../models';
 import {update} from '../models';
 
+export function AddAccount(arg1:string,arg2:string,arg3:string):Promise<main.Account>;
+
 export function ApplyUpdate():Promise<number>;
 
 export function CheckDrift():Promise<Array<main.Drift>>;
@@ -24,6 +26,8 @@ export function CreateProjectOnRemote(arg1:string,arg2:string,arg3:string,arg4:s
 
 export function ExportSettings():Promise<string>;
 
+export function GetAccounts():Promise<Array<main.Account>>;
+
 export function GetAuthStatus():Promise<main.AuthStatus>;
 
 export function GetCatalogs():Promise<Array<main.LoadedCatalog>>;
@@ -33,6 +37,8 @@ export function GetLastParentDir():Promise<string>;
 export function GetLocalDoc(arg1:string,arg2:string):Promise<string>;
 
 export function GetLocalOverview(arg1:string):Promise<main.LocalOverview>;
+
+export function GetOwnerOptions():Promise<Array<main.OwnerOption>>;
 
 export function GetOwners():Promise<Array<string>>;
 
@@ -69,6 +75,8 @@ export function PreviewProject(arg1:string,arg2:string,arg3:Record<string, strin
 export function PreviewUpdate(arg1:string):Promise<update.Preview>;
 
 export function PublishProject(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<string>;
+
+export function RemoveAccount(arg1:string):Promise<void>;
 
 export function SaveSettings(arg1:main.appConfig):Promise<void>;
 

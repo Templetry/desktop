@@ -34,6 +34,9 @@ type appConfig struct {
 	UIScale          string `json:"uiScale"`   // 0.9 | 1 | 1.1 | 1.25
 	UILayout         string `json:"uiLayout"`  // auto (default) | stacked
 	Catalogs         []CatalogEntry `json:"catalogs"`
+	// Accounts are signed-in forges other than the GitHub OAuth session.
+	// Tokens live in the OS keyring, never here — settings stay shareable.
+	Accounts []Account `json:"accounts,omitempty"`
 }
 
 // CatalogEntry is one user-defined catalog (the official one is built in).
@@ -257,42 +260,63 @@ func (a *App) createProject(cat, ref, owner, name, description, license string, 
 	a.mu.Unlock()
 
 	htmlURL := ""
+	cloneURL := ""
+	forgeToken, forgeLogin := token, login
 	if owner != "" {
-		if token == "" {
-			return none, fmt.Errorf("sign in with GitHub first")
+		// Owner keys carry their account ("<scheme>@<host>/<owner>"); a bare
+		// name means the GitHub OAuth session (legacy shape).
+		if strings.Contains(owner, "@") {
+			acc, plainOwner, accToken, err := a.resolveOwnerKey(owner)
+			if err != nil {
+				return none, err
+			}
+			cloneURL, htmlURL, err = forgeCreateRepo(acc, accToken, plainOwner, name, description, private)
+			if err != nil {
+				return none, fmt.Errorf("creating repository in %s: %w", owner, err)
+			}
+			// git credentials: the GitHub helper only applies to GitHub.
+			if acc.Scheme == "github" {
+				forgeToken, forgeLogin = accToken, acc.Login
+			} else {
+				forgeToken, forgeLogin = "", ""
+			}
+		} else {
+			if token == "" {
+				return none, fmt.Errorf("sign in with GitHub first")
+			}
+			endpoint := "https://api.github.com/user/repos"
+			if owner != login {
+				endpoint = "https://api.github.com/orgs/" + owner + "/repos"
+			}
+			payload := map[string]any{"name": name, "description": description, "private": private}
+			if license != "" {
+				payload["license_template"] = license
+				payload["auto_init"] = true
+			}
+			body, _ := json.Marshal(payload)
+			req, _ := http.NewRequest("POST", endpoint, bytes.NewReader(body))
+			req.Header.Set("Authorization", "Bearer "+token)
+			req.Header.Set("Accept", "application/vnd.github+json")
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				return none, err
+			}
+			var repo struct {
+				HTMLURL  string `json:"html_url"`
+				CloneURL string `json:"clone_url"`
+				Message  string `json:"message"`
+			}
+			err = json.NewDecoder(resp.Body).Decode(&repo)
+			resp.Body.Close()
+			if err != nil {
+				return none, err
+			}
+			if resp.StatusCode != http.StatusCreated {
+				return none, fmt.Errorf("creating repository in %s: %s (HTTP %d)", owner, repo.Message, resp.StatusCode)
+			}
+			htmlURL, cloneURL = repo.HTMLURL, repo.CloneURL
 		}
-		endpoint := "https://api.github.com/user/repos"
-		if owner != login {
-			endpoint = "https://api.github.com/orgs/" + owner + "/repos"
-		}
-		payload := map[string]any{"name": name, "description": description, "private": private}
-		if license != "" {
-			payload["license_template"] = license
-			payload["auto_init"] = true
-		}
-		body, _ := json.Marshal(payload)
-		req, _ := http.NewRequest("POST", endpoint, bytes.NewReader(body))
-		req.Header.Set("Authorization", "Bearer "+token)
-		req.Header.Set("Accept", "application/vnd.github+json")
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			return none, err
-		}
-		var repo struct {
-			HTMLURL  string `json:"html_url"`
-			CloneURL string `json:"clone_url"`
-			Message  string `json:"message"`
-		}
-		err = json.NewDecoder(resp.Body).Decode(&repo)
-		resp.Body.Close()
-		if err != nil {
-			return none, err
-		}
-		if resp.StatusCode != http.StatusCreated {
-			return none, fmt.Errorf("creating repository in %s: %s (HTTP %d)", owner, repo.Message, resp.StatusCode)
-		}
-		htmlURL = repo.HTMLURL
-		if err := runGit(parentDir, token, login, "clone", repo.CloneURL, name); err != nil {
+		if err := runGit(parentDir, forgeToken, forgeLogin, "clone", cloneURL, name); err != nil {
 			return none, fmt.Errorf("repo created (%s) but clone failed: %w", htmlURL, err)
 		}
 	} else {
@@ -318,7 +342,7 @@ func (a *App) createProject(cat, ref, owner, name, description, license string, 
 			{"push", "-u", "origin", "main"},
 		}
 		for _, s := range steps {
-			if err := runGit(target, token, login, s...); err != nil {
+			if err := runGit(target, forgeToken, forgeLogin, s...); err != nil {
 				return none, fmt.Errorf("repo created (%s) but push failed: %w", htmlURL, err)
 			}
 		}

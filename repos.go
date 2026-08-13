@@ -28,6 +28,9 @@ type Repo struct {
 	UpdatedAt   string `json:"updatedAt"`
 	Archived    bool   `json:"archived"`
 	AvatarURL   string `json:"avatarUrl"`
+	// Forge is the account key ("<scheme>@<host>") the repo came from;
+	// empty means the GitHub OAuth session.
+	Forge string `json:"forge,omitempty"`
 }
 
 // ListRepos returns the user's repositories across personal account and orgs,
@@ -36,11 +39,11 @@ func (a *App) ListRepos() ([]Repo, error) {
 	a.mu.Lock()
 	token := a.token
 	a.mu.Unlock()
-	if token == "" {
+	if token == "" && len(a.GetAccounts()) == 0 {
 		return nil, fmt.Errorf("sign in first")
 	}
 	var out []Repo
-	for page := 1; page <= 3; page++ {
+	for page := 1; token != "" && page <= 3; page++ {
 		url := fmt.Sprintf("https://api.github.com/user/repos?affiliation=owner,organization_member&sort=updated&per_page=100&page=%d", page)
 		req, _ := http.NewRequest("GET", url, nil)
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -80,6 +83,21 @@ func (a *App) ListRepos() ([]Repo, error) {
 		if len(batch) < 100 {
 			break
 		}
+	}
+	// Merge in every other signed-in forge account (ADR-0015).
+	for _, acc := range a.GetAccounts() {
+		if acc.Scheme == "github" {
+			continue
+		}
+		tok, err := accountToken(acc)
+		if err != nil {
+			continue
+		}
+		more, err := forgeListRepos(acc, tok)
+		if err != nil {
+			continue // one bad account must not blank the whole list
+		}
+		out = append(out, more...)
 	}
 	return out, nil
 }

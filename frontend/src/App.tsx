@@ -6,6 +6,7 @@ import {
     GetAuthStatus, StartGitHubLogin, Logout, GetOwners, CreateFullProject,
     ListRepos, OpenRepo, CloneRepo, GetSettings, SaveSettings, ExportSettings, ImportSettings,
     ScanProjects, OpenFolder, GetVersions, CheckUpdates, CheckDrift, CreateProjectOnRemote,
+    GetAccounts, AddAccount, RemoveAccount, GetOwnerOptions,
     ListTemplateRepos, GetRepoOverview, GetRepoDoc, GetLocalOverview, GetLocalDoc,
     PreviewUpdate, UpdateFileContent, ApplyUpdate, InstallAppUpdate,
 } from "../wailsjs/go/main/App";
@@ -60,11 +61,11 @@ function App() {
     const [vars, setVars] = useState<Record<string, string>>({});
     const [feats, setFeats] = useState<Record<string, boolean>>({});
     const [auth, setAuth] = useState<any>({ state: "logged_out" });
-    const [owners, setOwners] = useState<string[]>([]);
     const [owner, setOwner] = useState("");
     const [repoName, setRepoName] = useState("");
     const [repoPrivate, setRepoPrivate] = useState(true);
     const [remoteURL, setRemoteURL] = useState("");
+    const [newAcc, setNewAcc] = useState({ scheme: "gitlab", host: "gitlab.com", token: "" });
     const [license, setLicense] = useState("");
     const [parentDir, setParentDir] = useState("");
     const [previewEntries, setPreviewEntries] = useState<any[]>([]);
@@ -313,17 +314,23 @@ function App() {
     }, [auth.state]);
 
     useEffect(() => {
-        if (auth.state === "logged_in") {
-            GetOwners().then((o: string[]) => {
-                setOwners(o);
-                if (!owner) setOwner(settings.defaultOwner && o.includes(settings.defaultOwner) ? settings.defaultOwner : o[0] ?? "");
-            }).catch(() => {});
-            if (view === "cloud" && !repos.length) loadRepos();
-        } else {
-            setOwners([]);
-            setOwner("");
-        }
+        loadAccounts();
+        if (auth.state === "logged_in" && view === "cloud" && !repos.length) loadRepos();
     }, [auth.state]);
+
+    // Destinations across every signed-in forge (ADR-0015).
+    const [accounts, setAccounts] = useState<any[]>([]);
+    const [ownerOpts, setOwnerOpts] = useState<any[]>([]);
+    const loadAccounts = () => {
+        GetAccounts().then((a: any[]) => setAccounts(a ?? [])).catch(() => {});
+        GetOwnerOptions().then((o: any[]) => {
+            setOwnerOpts(o ?? []);
+            if (!owner && o?.length) {
+                const preferred = o.find((x: any) => x.key.endsWith("/" + settings.defaultOwner));
+                setOwner(preferred ? preferred.key : o[0].key);
+            }
+        }).catch(() => {});
+    };
 
     const pick = async (cat: string, ref: string) => {
         setSelectedCat(cat);
@@ -543,6 +550,50 @@ function App() {
                                     <button className="primary" onClick={login}>Sign in with GitHub</button>
                                 </div>
                             )}
+                            <h3 style={{ marginTop: 22 }}>Accounts</h3>
+                            {accounts.map((acc) => (
+                                <div key={acc.scheme + "@" + acc.host} className="catrow">
+                                    <span className="catname">
+                                        {acc.avatar && <img className="avatar sm" alt="" src={acc.avatar} />}
+                                        {acc.login} <em className="gitchip">{acc.scheme} · {acc.host}</em>
+                                    </span>
+                                    {acc.scheme === "github"
+                                        ? <button onClick={() => Logout().then(() => { setAuth({ state: "logged_out" }); loadAccounts(); })}>Sign out</button>
+                                        : <button onClick={() => {
+                                            RemoveAccount(acc.scheme + "@" + acc.host);
+                                            setSettingsMsg(`Removed ${acc.login} (${acc.host}).`);
+                                            setTimeout(loadAccounts, 100);
+                                        }}>Remove</button>}
+                                </div>
+                            ))}
+                            <div className="catrow">
+                                <select className="catnameinput" value={newAcc.scheme}
+                                    onChange={(e) => setNewAcc({ ...newAcc, scheme: e.target.value, host: e.target.value === "gitlab" ? "gitlab.com" : "codeberg.org" })}>
+                                    <option value="gitlab">GitLab</option>
+                                    <option value="gitea">Gitea / Forgejo</option>
+                                </select>
+                                <input placeholder="host (gitlab.com, codeberg.org, git.mycompany.com…)" value={newAcc.host}
+                                    onChange={(e) => setNewAcc({ ...newAcc, host: e.target.value })} />
+                                <input type="password" placeholder="personal access token" value={newAcc.token}
+                                    onChange={(e) => setNewAcc({ ...newAcc, token: e.target.value })} />
+                                <button disabled={busy || !newAcc.host || !newAcc.token} onClick={() => {
+                                    setBusy(true); setError("");
+                                    AddAccount(newAcc.scheme, newAcc.host, newAcc.token)
+                                        .then((acc: any) => {
+                                            setSettingsMsg(`Signed in as ${acc.login} on ${acc.host}.`);
+                                            setNewAcc({ scheme: "gitlab", host: "gitlab.com", token: "" });
+                                            loadAccounts();
+                                        })
+                                        .catch((e: any) => setError(String(e)))
+                                        .finally(() => setBusy(false));
+                                }}>Add account</button>
+                            </div>
+                            <p className="hint">
+                                GitHub signs in from the top bar (OAuth device flow). GitLab and Gitea/Forgejo use a
+                                personal access token with <code>api</code> (GitLab) or <code>repo</code> (Gitea) scope —
+                                the only method that works on self-hosted instances without registering an app. Tokens go
+                                straight to your OS keyring, never into the settings file.
+                            </p>
                         </section>
                         <section id="sec-defaults">
                             <h3>Defaults</h3>
@@ -560,7 +611,8 @@ function App() {
                                 <select value={settings.defaultOwner ?? ""}
                                     onChange={(e) => setSettings({ ...settings, defaultOwner: e.target.value })}>
                                     <option value="">(none)</option>
-                                    {owners.map((o) => <option key={o} value={o}>{o}</option>)}
+                                    {[...new Set(ownerOpts.map((o: any) => o.key.split("/").slice(1).join("/")))]
+                                        .map((o) => <option key={o} value={o}>{o}</option>)}
                                 </select>
                             </label>
                             <label className="field">
@@ -1090,12 +1142,12 @@ function App() {
                                 <span>Create in</span>
                                 <select value={owner} onChange={(e) => setOwner(e.target.value)}>
                                     <option value="">(local only — no remote)</option>
-                                    {owners.map((o) => <option key={o} value={o}>{o}</option>)}
+                                    {ownerOpts.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
                                     <option value={BYOR}>Any git host — paste a repository URL…</option>
                                 </select>
                             </label>
-                            {auth.state !== "logged_in" && owner !== BYOR && (
-                                <p className="hint">Sign in with GitHub (top bar) to create the repo for you — or pick “Any git host” to push to GitLab, Gitea, Bitbucket or a self-hosted server.</p>
+                            {!ownerOpts.length && owner !== BYOR && (
+                                <p className="hint">Sign in with GitHub (top bar) or add a GitLab/Gitea account (Settings → Accounts) to have the repo created for you — or pick “Any git host” to push to any server.</p>
                             )}
                             {owner === BYOR && (
                                 <>
@@ -1118,12 +1170,14 @@ function App() {
                             </label>
                             {owner !== "" && owner !== BYOR && (
                                 <>
-                                    <label className="field">
-                                        <span>License</span>
-                                        <select value={license} onChange={(e) => setLicense(e.target.value)}>
-                                            {LICENSES.map((l) => <option key={l} value={l}>{l === "" ? "(none)" : l}</option>)}
-                                        </select>
-                                    </label>
+                                    {owner.startsWith("github@") && (
+                                        <label className="field">
+                                            <span>License</span>
+                                            <select value={license} onChange={(e) => setLicense(e.target.value)}>
+                                                {LICENSES.map((l) => <option key={l} value={l}>{l === "" ? "(none)" : l}</option>)}
+                                            </select>
+                                        </label>
+                                    )}
                                     <label className="feature">
                                         <input type="checkbox" checked={repoPrivate}
                                             onChange={(e) => setRepoPrivate(e.target.checked)} />

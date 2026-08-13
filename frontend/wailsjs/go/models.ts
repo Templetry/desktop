@@ -65,6 +65,24 @@ export namespace catalog {
 
 export namespace main {
 	
+	export class Account {
+	    scheme: string;
+	    host: string;
+	    login: string;
+	    avatar?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Account(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.scheme = source["scheme"];
+	        this.host = source["host"];
+	        this.login = source["login"];
+	        this.avatar = source["avatar"];
+	    }
+	}
 	export class AuthStatus {
 	    state: string;
 	    login?: string;
@@ -288,6 +306,22 @@ export namespace main {
 	    }
 	}
 	
+	export class OwnerOption {
+	    key: string;
+	    label: string;
+	    forge: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new OwnerOption(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.label = source["label"];
+	        this.forge = source["forge"];
+	    }
+	}
 	export class PreviewEntry {
 	    path: string;
 	    binary: boolean;
@@ -316,6 +350,7 @@ export namespace main {
 	    updatedAt: string;
 	    archived: boolean;
 	    avatarUrl: string;
+	    forge?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Repo(source);
@@ -334,6 +369,7 @@ export namespace main {
 	        this.updatedAt = source["updatedAt"];
 	        this.archived = source["archived"];
 	        this.avatarUrl = source["avatarUrl"];
+	        this.forge = source["forge"];
 	    }
 	}
 	export class RepoOverview {
@@ -427,6 +463,7 @@ export namespace main {
 	    uiScale: string;
 	    uiLayout: string;
 	    catalogs: CatalogEntry[];
+	    accounts?: Account[];
 	
 	    static createFrom(source: any = {}) {
 	        return new appConfig(source);
@@ -446,6 +483,7 @@ export namespace main {
 	        this.uiScale = source["uiScale"];
 	        this.uiLayout = source["uiLayout"];
 	        this.catalogs = this.convertValues(source["catalogs"], CatalogEntry);
+	        this.accounts = this.convertValues(source["accounts"], Account);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
