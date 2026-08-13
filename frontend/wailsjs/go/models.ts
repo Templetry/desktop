@@ -25,6 +25,7 @@ export namespace catalog {
 	    label?: string;
 	    repo: string;
 	    ref: string;
+	    source?: string;
 	    forms: Form[];
 	
 	    static createFrom(source: any = {}) {
@@ -37,6 +38,7 @@ export namespace catalog {
 	        this.label = source["label"];
 	        this.repo = source["repo"];
 	        this.ref = source["ref"];
+	        this.source = source["source"];
 	        this.forms = this.convertValues(source["forms"], Form);
 	    }
 	

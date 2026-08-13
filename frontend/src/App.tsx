@@ -5,7 +5,7 @@ import {
     GetCatalogs, GetTemplate, PreviewProject, PreviewFile, ChooseParentDir, GetLastParentDir,
     GetAuthStatus, StartGitHubLogin, Logout, GetOwners, CreateFullProject,
     ListRepos, OpenRepo, CloneRepo, GetSettings, SaveSettings, ExportSettings, ImportSettings,
-    ScanProjects, OpenFolder, GetVersions, CheckUpdates, CheckDrift,
+    ScanProjects, OpenFolder, GetVersions, CheckUpdates, CheckDrift, CreateProjectOnRemote,
     ListTemplateRepos, GetRepoOverview, GetRepoDoc, GetLocalOverview, GetLocalDoc,
     PreviewUpdate, UpdateFileContent, ApplyUpdate, InstallAppUpdate,
 } from "../wailsjs/go/main/App";
@@ -19,6 +19,10 @@ type Preset = { key: string; label?: string; features?: Record<string, boolean> 
 type Manifest = { name: string; description?: string; variables?: Variable[]; features?: Feature[]; presets?: Preset[] };
 
 const LICENSES = ["", "mit", "apache-2.0", "gpl-3.0", "bsd-3-clause", "mpl-2.0", "unlicense"];
+
+// Sentinel owner value for "bring your own remote" (ADR-0009 / ADR-0015):
+// any git host, no forge API — the app only pushes.
+const BYOR = "::byor";
 
 // resolveDoc joins a relative markdown link against the current doc's folder.
 function resolveDoc(from: string, href: string) {
@@ -60,6 +64,7 @@ function App() {
     const [owner, setOwner] = useState("");
     const [repoName, setRepoName] = useState("");
     const [repoPrivate, setRepoPrivate] = useState(true);
+    const [remoteURL, setRemoteURL] = useState("");
     const [license, setLicense] = useState("");
     const [parentDir, setParentDir] = useState("");
     const [previewEntries, setPreviewEntries] = useState<any[]>([]);
@@ -363,7 +368,9 @@ function App() {
         setBusy(true); setError(""); setResult(null);
         try {
             const desc = `Created with Templetry (${selected})`;
-            const r: any = await CreateFullProject(selectedCat, selected, owner, repoName, desc, license, repoPrivate, parentDir, inputs, feats);
+            const r: any = owner === BYOR
+                ? await CreateProjectOnRemote(selectedCat, selected, repoName, remoteURL, parentDir, inputs, feats)
+                : await CreateFullProject(selectedCat, selected, owner, repoName, desc, license, repoPrivate, parentDir, inputs, feats);
             setResult(r);
         } catch (e) { setError(String(e)); } finally { setBusy(false); }
     };
@@ -1082,19 +1089,34 @@ function App() {
                             <label className="field">
                                 <span>Create in</span>
                                 <select value={owner} onChange={(e) => setOwner(e.target.value)}>
-                                    <option value="">(local only — no GitHub repo)</option>
+                                    <option value="">(local only — no remote)</option>
                                     {owners.map((o) => <option key={o} value={o}>{o}</option>)}
+                                    <option value={BYOR}>Any git host — paste a repository URL…</option>
                                 </select>
                             </label>
-                            {auth.state !== "logged_in" && (
-                                <p className="hint">Sign in with GitHub (sidebar) to create the repo in the cloud.</p>
+                            {auth.state !== "logged_in" && owner !== BYOR && (
+                                <p className="hint">Sign in with GitHub (top bar) to create the repo for you — or pick “Any git host” to push to GitLab, Gitea, Bitbucket or a self-hosted server.</p>
+                            )}
+                            {owner === BYOR && (
+                                <>
+                                    <label className="field">
+                                        <span>Repository URL</span>
+                                        <input value={remoteURL} placeholder="https://gitlab.com/me/my-repo.git"
+                                            onChange={(e) => setRemoteURL(e.target.value)} />
+                                    </label>
+                                    <p className="hint">
+                                        Create an <strong>empty</strong> repository on your host, paste its clone URL, and Templetry
+                                        renders, commits and pushes. Authentication uses your own git credentials (credential
+                                        manager or SSH key) — the app never sees them.
+                                    </p>
+                                </>
                             )}
                             <label className="field">
                                 <span>Name</span>
                                 <input value={repoName} placeholder="my-new-repo"
                                     onChange={(e) => setRepoName(e.target.value.toLowerCase().replace(/[^a-z0-9._-]+/g, "-"))} />
                             </label>
-                            {owner !== "" && (
+                            {owner !== "" && owner !== BYOR && (
                                 <>
                                     <label className="field">
                                         <span>License</span>
@@ -1123,8 +1145,9 @@ function App() {
 
                         <div className="actions">
                             <button disabled={busy} onClick={preview}>Preview</button>
-                            <button disabled={busy || !repoName || !parentDir} className="primary" onClick={create}>
-                                {owner ? "Create repo & project" : "Create project"}
+                            <button disabled={busy || !repoName || !parentDir || (owner === BYOR && !remoteURL)}
+                                className="primary" onClick={create}>
+                                {owner === BYOR ? "Create & push to remote" : owner ? "Create repo & project" : "Create project"}
                             </button>
                         </div>
 

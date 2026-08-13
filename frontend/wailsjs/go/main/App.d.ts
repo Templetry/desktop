@@ -20,6 +20,8 @@ export function CreateFullProject(arg1:string,arg2:string,arg3:string,arg4:strin
 
 export function CreateProject(arg1:string,arg2:string,arg3:string,arg4:Record<string, string>,arg5:Record<string, boolean>):Promise<string>;
 
+export function CreateProjectOnRemote(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:Record<string, string>,arg7:Record<string, boolean>):Promise<main.CreatedProject>;
+
 export function ExportSettings():Promise<string>;
 
 export function GetAuthStatus():Promise<main.AuthStatus>;

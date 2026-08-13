@@ -238,13 +238,20 @@ func (a *App) PublishProject(dir, name, description string, private bool) (strin
 // travelling via environment to a one-shot credential helper — never on the
 // command line, never persisted in .git/config.
 func runGit(dir, token, login string, args ...string) error {
-	helper := `!f() { echo "username=oauth2"; echo "password=$TEMPLETRY_GH_TOKEN"; }; f`
-	full := append([]string{
-		"-c", "user.name=" + login,
-		"-c", "user.email=" + login + "@users.noreply.github.com",
-		"-c", "credential.helper=",
-		"-c", "credential.helper=" + helper,
-	}, args...)
+	var full []string
+	if token == "" {
+		// BYOR and other non-GitHub remotes: leave identity and credentials
+		// to the user's own git configuration and credential helper.
+		full = args
+	} else {
+		helper := `!f() { echo "username=oauth2"; echo "password=$TEMPLETRY_GH_TOKEN"; }; f`
+		full = append([]string{
+			"-c", "user.name=" + login,
+			"-c", "user.email=" + login + "@users.noreply.github.com",
+			"-c", "credential.helper=",
+			"-c", "credential.helper=" + helper,
+		}, args...)
+	}
 	cmd := exec.Command("git", full...)
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(),
