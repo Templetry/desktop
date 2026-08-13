@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	goruntime "runtime"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -76,6 +77,9 @@ func norm(v string) string { return strings.TrimPrefix(strings.TrimSpace(v), "v"
 // InstallAppUpdate downloads the latest Windows installer from releases,
 // launches it and quits the app so the installer can replace it.
 func (a *App) InstallAppUpdate() (string, error) {
+	if goruntime.GOOS != "windows" {
+		return "", fmt.Errorf("in-app update is Windows-only for now — download the new version from https://github.com/Templetry/desktop/releases")
+	}
 	resp, err := http.Get("https://api.github.com/repos/Templetry/desktop/releases/latest")
 	if err != nil {
 		return "", err
