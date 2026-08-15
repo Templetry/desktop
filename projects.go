@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Templetry/engine/answers"
+	"github.com/Templetry/engine/catalog"
 	"github.com/Templetry/engine/manifest"
 	"github.com/Templetry/engine/piece"
 	"github.com/Templetry/engine/source"
@@ -277,17 +278,74 @@ func (a *App) GetLocalDoc(dir, rel string) (string, error) {
 	return string(data), nil
 }
 
-// PieceOption is one piece a project's template offers.
+// PieceOption is one piece a project can adopt.
 type PieceOption struct {
-	Name        string              `json:"name"`
-	Description string              `json:"description"`
-	Applied     bool                `json:"applied"`
-	Variables   []manifest.Variable `json:"variables,omitempty"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Applied     bool   `json:"applied"`
+	// Common marks a piece that lives in a shared repository rather than in
+	// the project's own form (ADR-0016).
+	Common    bool                `json:"common,omitempty"`
+	Variables []manifest.Variable `json:"variables,omitempty"`
 }
 
-// ListPieces returns the pieces the project's template ships, marking the
-// applied ones and carrying each piece's own variables so the UI can ask
-// for them (ADR-0014).
+// pieceRegistry is what the piece resolver consults for common pieces: the
+// `pieces` arrays of every loaded catalog, merged, official first so its
+// implementations win a tie. Catalogs load lazily, because the Local view
+// can be the first thing a user opens.
+func (a *App) pieceRegistry() *catalog.Registry {
+	a.mu.Lock()
+	empty := len(a.regs) == 0
+	a.mu.Unlock()
+	if empty {
+		a.GetCatalogs() // per-catalog failures are reported there, not here
+	}
+
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	names := make([]string, 0, len(a.regs))
+	for name := range a.regs {
+		if name != OfficialCatalogName {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	if a.regs[OfficialCatalogName] != nil {
+		names = append([]string{OfficialCatalogName}, names...)
+	}
+
+	merged := &catalog.Registry{}
+	seen := map[string]bool{}
+	for _, name := range names {
+		for _, p := range a.regs[name].Pieces {
+			// Several entries legitimately share a name with disjoint
+			// applies_to, so identity is name + where it comes from.
+			k := p.Name + "|" + p.Repo + "|" + p.Path
+			if seen[k] {
+				continue
+			}
+			seen[k] = true
+			merged.Pieces = append(merged.Pieces, p)
+		}
+	}
+	return merged
+}
+
+// formManifestOf reads the form's manifest out of a fetched form FileSet.
+func formManifestOf(files *source.FileSet) (*manifest.Manifest, error) {
+	mf := files.Get("template.yml")
+	if mf == nil {
+		mf = files.Get("template.yaml")
+	}
+	if mf == nil {
+		return nil, fmt.Errorf("the template no longer has a template.yml")
+	}
+	return manifest.Load(mf.Data)
+}
+
+// ListPieces returns everything the project can adopt — the pieces its form
+// ships plus the registry's common pieces that support its template — with
+// each piece's own variables so the UI can ask for them (ADR-0014, ADR-0016).
 func (a *App) ListPieces(dir string) ([]PieceOption, error) {
 	ans, err := answers.Read(dir)
 	if err != nil {
@@ -297,13 +355,15 @@ func (a *App) ListPieces(dir string) ([]PieceOption, error) {
 	if err != nil {
 		return nil, err
 	}
+	reg := a.pieceRegistry()
 	out := []PieceOption{}
-	for _, info := range piece.List(files, ans) {
-		opt := PieceOption{Name: info.Name, Description: info.Description, Applied: info.Applied}
-		if sub, err := piece.Extract(files, info.Name); err == nil {
-			if pm, err := piece.ManifestOf(sub); err == nil {
-				opt.Variables = pm.Variables
-			}
+	for _, info := range piece.Available(files, reg, ans) {
+		opt := PieceOption{
+			Name: info.Name, Description: info.Description,
+			Applied: info.Applied, Common: info.Common,
+		}
+		if res, err := piece.Resolve(info.Name, files, ans.Template.Source, reg, ans); err == nil {
+			opt.Variables = res.Manifest.Variables
 		}
 		out = append(out, opt)
 	}
@@ -325,32 +385,31 @@ func (a *App) AddPiece(dir, name string, vars map[string]string) (string, error)
 	if err != nil {
 		return "", err
 	}
-	mf := files.Get("template.yml")
-	if mf == nil {
-		mf = files.Get("template.yaml")
-	}
-	if mf == nil {
-		return "", fmt.Errorf("the template no longer has a template.yml")
-	}
-	formM, err := manifest.Load(mf.Data)
+	formM, err := formManifestOf(files)
 	if err != nil {
 		return "", err
 	}
-	pieceFiles, err := piece.Extract(files, name)
+	resolved, err := piece.Resolve(name, files, ans.Template.Source, a.pieceRegistry(), ans)
 	if err != nil {
 		return "", err
 	}
-	pm, err := piece.ManifestOf(pieceFiles)
+	if resolved.Common {
+		// A common piece has its own head, unrelated to the form's.
+		commit = resolved.Commit
+	}
+	res, err := piece.Apply(dir, formM, resolved.Manifest, resolved.Files, ans.Variables, vars)
 	if err != nil {
 		return "", err
 	}
-	res, err := piece.Apply(dir, formM, pm, pieceFiles, ans.Variables, vars)
-	if err != nil {
-		return "", err
-	}
-	src := ans.Template.Source
-	if src != "" && src != "local" {
-		src += "/pieces/" + name
+
+	// A common piece records its own repository, so updates follow it there
+	// rather than looking inside the form (ADR-0016).
+	src := resolved.Source
+	if !resolved.Common {
+		src = ans.Template.Source
+		if src != "" && src != "local" {
+			src += "/pieces/" + name
+		}
 	}
 	ans.Pieces = append(ans.Pieces, answers.AppliedPiece{
 		Name: name, Source: src, Commit: commit,
@@ -360,8 +419,8 @@ func (a *App) AddPiece(dir, name string, vars map[string]string) (string, error)
 		return "", err
 	}
 	msg := fmt.Sprintf("%s applied: %d files", name, len(res.Files))
-	if len(pm.Patches) > 0 {
-		msg += fmt.Sprintf(" + %d patches", len(pm.Patches))
+	if len(resolved.Manifest.Patches) > 0 {
+		msg += fmt.Sprintf(" + %d patches", len(resolved.Manifest.Patches))
 	}
 	return msg + " — review with git before committing", nil
 }

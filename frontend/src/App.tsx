@@ -912,8 +912,9 @@ function App() {
                                             <>
                                                 <h3 style={{ marginTop: 20 }}>Pieces</h3>
                                                 <p className="hint">
-                                                    Decoupled units this template offers. Adopting one adds only new
-                                                    files and its declared patches — it never overwrites your work.
+                                                    Decoupled units this project can adopt — from its own template and
+                                                    from the shared catalogs. Adopting one adds only new files and its
+                                                    declared patches; it never overwrites your work.
                                                 </p>
                                                 {pieces.map((pc: any) => (
                                                     <div key={pc.name} className="repo" style={{ marginTop: 8 }}>
@@ -921,6 +922,11 @@ function App() {
                                                             <strong>
                                                                 {pc.name}
                                                                 {pc.applied && <em className="driftchip">applied</em>}
+                                                                {pc.common && (
+                                                                    <em className="gitchip" title="Lives in a shared catalog repository, not in this template — fixed once, updated everywhere">
+                                                                        common
+                                                                    </em>
+                                                                )}
                                                             </strong>
                                                             <span className="desc">{pc.description}</span>
                                                             {!pc.applied && (pc.variables ?? []).map((v: any) => (
