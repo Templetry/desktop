@@ -6,8 +6,8 @@ Built with [Wails](https://wails.io): a Go backend that imports the engine packa
 
 ## The three sections
 
-- **Build** — repo-first creation: pick a form from the catalog, fill the manifest-driven dynamic form, preview the render, **verify** it (the rendered project is built inside the manifest's container, so no toolchain is installed here), create the repo on any signed-in forge (or push to a pasted remote, or stay local-only) and get a ready-to-work clone.
-- **Cloud** — your repositories across every signed-in account and org, on GitHub, GitLab and Gitea/Forgejo alike: repos carrying a `template.yml` the engine can render are flagged, clones already on disk are cross-linked, and every repo opens a state preview — description, languages, branches, latest CI runs or pipelines, README and docs rendered as markdown.
+- **Build** — repo-first creation: browse the catalog by taxonomy (kind chips and a search across every axis), pick a form, fill the manifest-driven dynamic form, preview the render, **verify** it (the rendered project is built inside the manifest's container, so no toolchain is installed here), create the repo on any signed-in forge (or push to a pasted remote, or stay local-only) and get a ready-to-work clone.
+- **Cloud** — your repositories across every signed-in account and org, on GitHub, GitLab and Gitea/Forgejo alike: clones already on disk are cross-linked, and every repo opens a state preview — description, languages, branches, latest CI runs or pipelines, README and docs rendered as markdown. A repo the engine can render is flagged, and its manifests are read, so each detected form reports its name, description and taxonomy.
 - **Local** — every repository under your repositories folder, found recursively and organized by folder: Templetry projects with their provenance and update cycle, plain git repos with branch and remote, a **pieces panel**, and a per-repo preview — branches, remotes, last commit, working-tree state and docs.
 
 ## Also in the box
