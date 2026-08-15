@@ -299,7 +299,10 @@ aside.collapsed .collapse { margin: 0 auto 14px; }
 }
 .form:hover:not(:disabled) { background: var(--surface); }
 .form.active { background: var(--surface); border-color: var(--brass-deep); }
-.form.active span::before { content: "\25B8  "; color: var(--brass); }
+/* The marker belongs to the form's name, not to every span inside the
+   button — the taxonomy chips live in one too, and it grew a second arrow
+   on its own row. */
+.form.active > span:not(.taxtags)::before { content: "\25B8  "; color: var(--brass); }
 .form:disabled { color: #5b5f6e; cursor: default; }
 .form em { font-size: 11px; color: #5b5f6e; font-style: normal; }
 
