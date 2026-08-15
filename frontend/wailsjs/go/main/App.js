@@ -6,6 +6,10 @@ export function AddAccount(arg1, arg2, arg3) {
   return window['go']['main']['App']['AddAccount'](arg1, arg2, arg3);
 }
 
+export function AddPiece(arg1, arg2, arg3) {
+  return window['go']['main']['App']['AddPiece'](arg1, arg2, arg3);
+}
+
 export function ApplyUpdate() {
   return window['go']['main']['App']['ApplyUpdate']();
 }
@@ -104,6 +108,10 @@ export function ImportSettings() {
 
 export function InstallAppUpdate() {
   return window['go']['main']['App']['InstallAppUpdate']();
+}
+
+export function ListPieces(arg1) {
+  return window['go']['main']['App']['ListPieces'](arg1);
 }
 
 export function ListRepos() {

@@ -322,6 +322,42 @@ export namespace main {
 	        this.forge = source["forge"];
 	    }
 	}
+	export class PieceOption {
+	    name: string;
+	    description: string;
+	    applied: boolean;
+	    variables?: manifest.Variable[];
+	
+	    static createFrom(source: any = {}) {
+	        return new PieceOption(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.applied = source["applied"];
+	        this.variables = this.convertValues(source["variables"], manifest.Variable);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class PreviewEntry {
 	    path: string;
 	    binary: boolean;
@@ -695,6 +731,7 @@ export namespace update {
 	export class Entry {
 	    path: string;
 	    status: string;
+	    piece?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Entry(source);
@@ -704,6 +741,7 @@ export namespace update {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.path = source["path"];
 	        this.status = source["status"];
+	        this.piece = source["piece"];
 	    }
 	}
 	export class Preview {

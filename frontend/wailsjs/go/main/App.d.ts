@@ -6,6 +6,8 @@ import {update} from '../models';
 
 export function AddAccount(arg1:string,arg2:string,arg3:string):Promise<main.Account>;
 
+export function AddPiece(arg1:string,arg2:string,arg3:Record<string, string>):Promise<string>;
+
 export function ApplyUpdate():Promise<number>;
 
 export function CheckDrift():Promise<Array<main.Drift>>;
@@ -55,6 +57,8 @@ export function GetVersions():Promise<main.VersionInfo>;
 export function ImportSettings():Promise<main.appConfig>;
 
 export function InstallAppUpdate():Promise<string>;
+
+export function ListPieces(arg1:string):Promise<Array<main.PieceOption>>;
 
 export function ListRepos():Promise<Array<main.Repo>>;
 

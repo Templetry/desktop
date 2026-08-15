@@ -6,7 +6,7 @@ import {
     GetAuthStatus, StartGitHubLogin, Logout, GetOwners, CreateFullProject,
     ListRepos, OpenRepo, CloneRepo, GetSettings, SaveSettings, ExportSettings, ImportSettings,
     ScanProjects, OpenFolder, GetVersions, CheckUpdates, CheckDrift, CreateProjectOnRemote,
-    GetAccounts, AddAccount, RemoveAccount, GetOwnerOptions,
+    GetAccounts, AddAccount, RemoveAccount, GetOwnerOptions, ListPieces, AddPiece,
     ListTemplateRepos, GetRepoOverview, GetRepoDoc, GetLocalOverview, GetLocalDoc,
     PreviewUpdate, UpdateFileContent, ApplyUpdate, InstallAppUpdate,
 } from "../wailsjs/go/main/App";
@@ -199,7 +199,40 @@ function App() {
             .catch((e: any) => setLocalDocText(String(e)));
     };
 
+    // Pieces of the previewed project (ADR-0014).
+    const [pieces, setPieces] = useState<any[]>([]);
+    const [pieceVars, setPieceVars] = useState<Record<string, Record<string, string>>>({});
+
+    const loadPieces = (p: any) => {
+        setPieces([]);
+        if (p.kind !== "templetry") return;
+        ListPieces(p.dir)
+            .then((list: any[]) => {
+                setPieces(list ?? []);
+                const seeds: Record<string, Record<string, string>> = {};
+                (list ?? []).forEach((pc: any) => {
+                    seeds[pc.name] = Object.fromEntries(
+                        (pc.variables ?? []).map((v: any) => [v.key, v.default ?? ""]));
+                });
+                setPieceVars(seeds);
+            })
+            .catch(() => setPieces([]));
+    };
+
+    const adoptPiece = (dir: string, name: string) => {
+        setBusy(true); setError("");
+        AddPiece(dir, name, pieceVars[name] ?? {})
+            .then((msg: string) => {
+                setRepoMsg(msg);
+                loadPieces(localPrev.proj);
+                loadProjects();
+            })
+            .catch((e: any) => setError(String(e)))
+            .finally(() => setBusy(false));
+    };
+
     const openLocalPreview = (p: any) => {
+        loadPieces(p);
         setLocalPrev({ proj: p, data: null });
         setLocalDoc(""); setLocalDocText("");
         setTimeout(() => document.getElementById("localprev")?.scrollIntoView({ behavior: "smooth" }), 60);
@@ -869,6 +902,46 @@ function App() {
                                                 </p>
                                             )}
                                         </div>
+                                        {pieces.length > 0 && (
+                                            <>
+                                                <h3 style={{ marginTop: 20 }}>Pieces</h3>
+                                                <p className="hint">
+                                                    Decoupled units this template offers. Adopting one adds only new
+                                                    files and its declared patches — it never overwrites your work.
+                                                </p>
+                                                {pieces.map((pc: any) => (
+                                                    <div key={pc.name} className="repo" style={{ marginTop: 8 }}>
+                                                        <div className="repoinfo">
+                                                            <strong>
+                                                                {pc.name}
+                                                                {pc.applied && <em className="driftchip">applied</em>}
+                                                            </strong>
+                                                            <span className="desc">{pc.description}</span>
+                                                            {!pc.applied && (pc.variables ?? []).map((v: any) => (
+                                                                <label key={v.key} className="field" style={{ marginTop: 6 }}>
+                                                                    <span>{v.label ?? v.key}</span>
+                                                                    <input
+                                                                        value={pieceVars[pc.name]?.[v.key] ?? ""}
+                                                                        placeholder={v.default ?? ""}
+                                                                        onChange={(e) => setPieceVars({
+                                                                            ...pieceVars,
+                                                                            [pc.name]: { ...(pieceVars[pc.name] ?? {}), [v.key]: e.target.value },
+                                                                        })} />
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                        <div className="repoactions">
+                                                            {pc.applied
+                                                                ? <button disabled title="Already part of this project">✓ Applied</button>
+                                                                : <button className="primary" disabled={busy}
+                                                                    onClick={() => adoptPiece(localPrev.proj.dir, pc.name)}>
+                                                                    + Add piece
+                                                                </button>}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </>
+                                        )}
                                         {(localPrev.data.docs ?? []).length > 0 && (
                                             <div className="preview" style={{ height: 320, marginTop: 12 }}>
                                                 <div className="ptree">

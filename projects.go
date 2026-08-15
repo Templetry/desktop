@@ -8,6 +8,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Templetry/engine/answers"
+	"github.com/Templetry/engine/manifest"
+	"github.com/Templetry/engine/piece"
 	"github.com/Templetry/engine/source"
 	"github.com/goccy/go-yaml"
 )
@@ -272,6 +275,95 @@ func (a *App) GetLocalDoc(dir, rel string) (string, error) {
 		data = data[:512*1024]
 	}
 	return string(data), nil
+}
+
+// PieceOption is one piece a project's template offers.
+type PieceOption struct {
+	Name        string              `json:"name"`
+	Description string              `json:"description"`
+	Applied     bool                `json:"applied"`
+	Variables   []manifest.Variable `json:"variables,omitempty"`
+}
+
+// ListPieces returns the pieces the project's template ships, marking the
+// applied ones and carrying each piece's own variables so the UI can ask
+// for them (ADR-0014).
+func (a *App) ListPieces(dir string) ([]PieceOption, error) {
+	ans, err := answers.Read(dir)
+	if err != nil {
+		return nil, err
+	}
+	files, _, err := piece.FetchForm(ans)
+	if err != nil {
+		return nil, err
+	}
+	out := []PieceOption{}
+	for _, info := range piece.List(files, ans) {
+		opt := PieceOption{Name: info.Name, Description: info.Description, Applied: info.Applied}
+		if sub, err := piece.Extract(files, info.Name); err == nil {
+			if pm, err := piece.ManifestOf(sub); err == nil {
+				opt.Variables = pm.Variables
+			}
+		}
+		out = append(out, opt)
+	}
+	return out, nil
+}
+
+// AddPiece adopts one piece into an existing project and records it.
+func (a *App) AddPiece(dir, name string, vars map[string]string) (string, error) {
+	ans, err := answers.Read(dir)
+	if err != nil {
+		return "", err
+	}
+	for _, p := range ans.Pieces {
+		if p.Name == name {
+			return "", fmt.Errorf("piece %q is already applied", name)
+		}
+	}
+	files, commit, err := piece.FetchForm(ans)
+	if err != nil {
+		return "", err
+	}
+	mf := files.Get("template.yml")
+	if mf == nil {
+		mf = files.Get("template.yaml")
+	}
+	if mf == nil {
+		return "", fmt.Errorf("the template no longer has a template.yml")
+	}
+	formM, err := manifest.Load(mf.Data)
+	if err != nil {
+		return "", err
+	}
+	pieceFiles, err := piece.Extract(files, name)
+	if err != nil {
+		return "", err
+	}
+	pm, err := piece.ManifestOf(pieceFiles)
+	if err != nil {
+		return "", err
+	}
+	res, err := piece.Apply(dir, formM, pm, pieceFiles, ans.Variables, vars)
+	if err != nil {
+		return "", err
+	}
+	src := ans.Template.Source
+	if src != "" && src != "local" {
+		src += "/pieces/" + name
+	}
+	ans.Pieces = append(ans.Pieces, answers.AppliedPiece{
+		Name: name, Source: src, Commit: commit,
+		Variables: res.Variables, Files: res.Files,
+	})
+	if err := answers.Write(dir, ans); err != nil {
+		return "", err
+	}
+	msg := fmt.Sprintf("%s applied: %d files", name, len(res.Files))
+	if len(pm.Patches) > 0 {
+		msg += fmt.Sprintf(" + %d patches", len(pm.Patches))
+	}
+	return msg + " — review with git before committing", nil
 }
 
 // OpenFolder shows a project directory in the system file explorer.
