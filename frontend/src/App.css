@@ -339,6 +339,9 @@ input:focus, select:focus, button:focus-visible {
 .features { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 4px; }
 .feature { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
 .feature input { accent-color: var(--brass); }
+/* A feature combination the engine will refuse: shown, never auto-fixed. */
+.feature.bad > span { color: var(--bad); }
+.fieldnote { font-size: 12px; font-style: normal; color: var(--bad); }
 
 .outrow { display: flex; gap: 10px; max-width: 640px; }
 

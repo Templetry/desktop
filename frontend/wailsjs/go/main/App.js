@@ -173,3 +173,11 @@ export function StartGitHubLogin() {
 export function UpdateFileContent(arg1) {
   return window['go']['main']['App']['UpdateFileContent'](arg1);
 }
+
+export function GetVerifyInfo(arg1, arg2) {
+  return window['go']['main']['App']['GetVerifyInfo'](arg1, arg2);
+}
+
+export function StartVerify(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['StartVerify'](arg1, arg2, arg3, arg4);
+}

@@ -83,6 +83,24 @@ export namespace main {
 	        this.avatar = source["avatar"];
 	    }
 	}
+	export class VerifyInfo {
+	    available: boolean;
+	    image?: string;
+	    run?: string;
+	    reason?: string;
+
+	    static createFrom(source: any = {}) {
+	        return new VerifyInfo(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.available = source["available"];
+	        this.image = source["image"];
+	        this.run = source["run"];
+	        this.reason = source["reason"];
+	    }
+	}
 	export class AuthStatus {
 	    state: string;
 	    login?: string;

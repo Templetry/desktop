@@ -9,13 +9,15 @@ import {
     GetAccounts, AddAccount, RemoveAccount, GetOwnerOptions, ListPieces, AddPiece,
     ListTemplateRepos, GetRepoOverview, GetRepoDoc, GetLocalOverview, GetLocalDoc,
     PreviewUpdate, UpdateFileContent, ApplyUpdate, InstallAppUpdate,
+    GetVerifyInfo, StartVerify,
 } from "../wailsjs/go/main/App";
+import { EventsOn, EventsOff } from "../wailsjs/runtime";
 import "./App.css";
 
 type Form = { form: string; name: string; path: string; status: string; description?: string };
 type Parent = { key: string; label?: string; repo: string; ref: string; forms: Form[] };
 type Variable = { key: string; label?: string; type?: string; pattern?: string; options?: string[]; default?: string };
-type Feature = { key: string; label?: string; default?: boolean };
+type Feature = { key: string; label?: string; default?: boolean; requires?: string[]; conflicts?: string[] };
 type Preset = { key: string; label?: string; features?: Record<string, boolean> };
 type Manifest = { name: string; description?: string; variables?: Variable[]; features?: Feature[]; presets?: Preset[] };
 
@@ -412,6 +414,27 @@ function App() {
 
     const targetPath = parentDir && repoName ? `${parentDir.replace(/[\\/]+$/, "")}\\${repoName}` : "";
 
+    // The engine enforces requires/conflicts on the FINAL feature states and
+    // refuses to auto-fix them, so the UI shows the problem rather than
+    // silently ticking boxes — and blocks the actions that would just fail.
+    const featureIssues = useMemo(() => {
+        const issues: Record<string, string> = {};
+        const labelOf = (k: string) =>
+            (manifest?.features ?? []).find((f) => f.key === k)?.label ?? k;
+        for (const f of manifest?.features ?? []) {
+            if (!feats[f.key]) continue;
+            for (const req of f.requires ?? []) {
+                if (!feats[req]) issues[f.key] = `needs ${labelOf(req)}`;
+            }
+            for (const con of f.conflicts ?? []) {
+                if (feats[con]) issues[f.key] = `cannot be combined with ${labelOf(con)}`;
+            }
+        }
+        return issues;
+    }, [manifest, feats]);
+
+    const featureConflict = Object.keys(featureIssues).length > 0;
+
     const preview = async () => {
         setBusy(true); setError(""); setResult(null); setPreviewSel(""); setPreviewContent("");
         try {
@@ -419,6 +442,43 @@ function App() {
             setTimeout(() => document.querySelector(".previewsec")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
         }
         catch (e) { setError(String(e)); } finally { setBusy(false); }
+    };
+
+    // Verify: render these inputs to a temp dir and build them in a
+    // container. Output streams back as events, so a long build shows
+    // progress instead of a frozen button.
+    const [verifyInfo, setVerifyInfo] = useState<any>(null);
+    const [verifying, setVerifying] = useState(false);
+    const [verifyLog, setVerifyLog] = useState<string | null>(null);
+    const [verifyOk, setVerifyOk] = useState<boolean | null>(null);
+
+    useEffect(() => {
+        EventsOn("verify:log", (chunk: string) => setVerifyLog((l) => (l ?? "") + chunk));
+        EventsOn("verify:done", (d: any) => {
+            setVerifying(false);
+            setVerifyOk(!!d?.ok);
+            if (!d?.ok && d?.error) setVerifyLog((l) => (l ?? "") + "\n" + d.error);
+        });
+        return () => { EventsOff("verify:log"); EventsOff("verify:done"); };
+    }, []);
+
+    // What a form can be verified with depends on the form, so ask whenever
+    // the selection changes — and clear any log from the previous one.
+    useEffect(() => {
+        setVerifyLog(null); setVerifyOk(null); setVerifyInfo(null);
+        if (!selected || !selectedCat) return;
+        GetVerifyInfo(selectedCat, selected).then(setVerifyInfo).catch(() => setVerifyInfo(null));
+    }, [selectedCat, selected]);
+
+    const startVerify = async () => {
+        setError(""); setVerifyLog(""); setVerifyOk(null); setVerifying(true);
+        try {
+            await StartVerify(selectedCat, selected, inputs, feats);
+        } catch (e) {
+            setVerifying(false);
+            setVerifyOk(false);
+            setError(String(e));
+        }
     };
 
     const openPreviewFile = async (path: string) => {
@@ -1226,10 +1286,13 @@ function App() {
                                 {(manifest.features ?? []).length > 0 && (
                                     <div className="features">
                                         {(manifest.features ?? []).map((f) => (
-                                            <label key={f.key} className="feature">
+                                            <label key={f.key} className={`feature ${featureIssues[f.key] ? "bad" : ""}`}>
                                                 <input type="checkbox" checked={feats[f.key] ?? false}
                                                     onChange={(e) => setFeats({ ...feats, [f.key]: e.target.checked })} />
                                                 <span>{f.label ?? f.key}</span>
+                                                {featureIssues[f.key] && (
+                                                    <em className="fieldnote">{featureIssues[f.key]}</em>
+                                                )}
                                             </label>
                                         ))}
                                     </div>
@@ -1299,12 +1362,37 @@ function App() {
                         </section>
 
                         <div className="actions">
-                            <button disabled={busy} onClick={preview}>Preview</button>
-                            <button disabled={busy || !repoName || !parentDir || (owner === BYOR && !remoteURL)}
+                            <button disabled={busy || featureConflict} onClick={preview}>Preview</button>
+                            <button disabled={busy || featureConflict || verifying || !verifyInfo?.available}
+                                title={verifyInfo?.reason || `Render these inputs and build them in ${verifyInfo?.image}`}
+                                onClick={startVerify}>
+                                {verifying ? "Verifying…" : "Verify build"}
+                            </button>
+                            <button disabled={busy || featureConflict || !repoName || !parentDir || (owner === BYOR && !remoteURL)}
                                 className="primary" onClick={create}>
                                 {owner === BYOR ? "Create & push to remote" : owner ? "Create repo & project" : "Create project"}
                             </button>
                         </div>
+
+                        {featureConflict && (
+                            <p className="hint">
+                                Resolve the feature combination above first — the engine refuses it rather than
+                                guessing which side you meant.
+                            </p>
+                        )}
+                        {verifyLog !== null && (
+                            <section style={{ marginTop: 14 }}>
+                                <h3>Verify {verifying ? "— running" : verifyOk === true ? "— passed" : verifyOk === false ? "— failed" : ""}</h3>
+                                <p className="hint">
+                                    The rendered project is built inside {verifyInfo?.image} (ADR-0004), so nothing
+                                    is installed on this machine and nothing is written to your folders.
+                                </p>
+                                <pre className={verifyOk === false ? "error" : "output"}
+                                    style={{ maxHeight: 320, overflow: "auto", whiteSpace: "pre-wrap" }}>
+                                    {verifyLog || "Starting the container…"}
+                                </pre>
+                            </section>
+                        )}
 
                         {busy && <p className="hint">Working…</p>}
                         {error && <pre className="error">{error}</pre>}

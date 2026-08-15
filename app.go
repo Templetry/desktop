@@ -30,6 +30,9 @@ type App struct {
 	preview      *source.FileSet
 
 	upd *update.Preview
+
+	// verifying guards against a second container run while one is going.
+	verifying bool
 }
 
 type bundle struct {

@@ -89,3 +89,7 @@ export function ScanProjects():Promise<Array<main.LocalProject>>;
 export function StartGitHubLogin():Promise<main.AuthStatus>;
 
 export function UpdateFileContent(arg1:string):Promise<string>;
+
+export function GetVerifyInfo(arg1:string,arg2:string):Promise<main.VerifyInfo>;
+
+export function StartVerify(arg1:string,arg2:string,arg3:{[key: string]: string},arg4:{[key: string]: boolean}):Promise<string>;
