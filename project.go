@@ -22,17 +22,17 @@ type CreatedProject struct {
 }
 
 type appConfig struct {
-	LastParentDir    string `json:"lastParentDir"`
-	DefaultParentDir string `json:"defaultParentDir"`
-	DefaultOwner     string `json:"defaultOwner"`
-	DefaultPrivate   bool   `json:"defaultPrivate"`
-	DefaultLicense   string `json:"defaultLicense"`
-	RegistryURL      string `json:"registryUrl"`
-	UITheme          string `json:"uiTheme"`   // dark (default) | light
-	UIAccent         string `json:"uiAccent"`  // hex; empty = brand brass
-	UIDensity        string `json:"uiDensity"` // comfortable (default) | compact
-	UIScale          string `json:"uiScale"`   // 0.9 | 1 | 1.1 | 1.25
-	UILayout         string `json:"uiLayout"`  // auto (default) | stacked
+	LastParentDir    string         `json:"lastParentDir"`
+	DefaultParentDir string         `json:"defaultParentDir"`
+	DefaultOwner     string         `json:"defaultOwner"`
+	DefaultPrivate   bool           `json:"defaultPrivate"`
+	DefaultLicense   string         `json:"defaultLicense"`
+	RegistryURL      string         `json:"registryUrl"`
+	UITheme          string         `json:"uiTheme"`   // dark (default) | light
+	UIAccent         string         `json:"uiAccent"`  // hex; empty = brand brass
+	UIDensity        string         `json:"uiDensity"` // comfortable (default) | compact
+	UIScale          string         `json:"uiScale"`   // 0.9 | 1 | 1.1 | 1.25
+	UILayout         string         `json:"uiLayout"`  // auto (default) | stacked
 	Catalogs         []CatalogEntry `json:"catalogs"`
 	// Accounts are signed-in forges other than the GitHub OAuth session.
 	// Tokens live in the OS keyring, never here — settings stay shareable.
