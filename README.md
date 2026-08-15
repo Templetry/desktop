@@ -32,6 +32,19 @@ Full walkthrough: the wiki's [desktop guide](https://github.com/Templetry/wiki/b
 ```sh
 wails dev     # live development (Vite hot reload; Go bindings on http://localhost:34115)
 wails build   # redistributable production build
+go test ./...  # unit tests
 ```
 
 Configuration lives in `wails.json` ([reference](https://wails.io/docs/reference/project-config)). For GitHub auth in development, set `TEMPLETRY_GH_CLIENT_ID` to your own OAuth App client id (device flow enabled).
+
+### Live forge checks
+
+The Cloud preview for GitLab and Gitea is a set of assumptions about JSON field names and endpoint paths — the kind of thing that compiles, passes every unit test, and is wrong.
+
+```sh
+go test -tags liveapi -run Live -v ./...
+```
+
+These read **public** repositories with no token, so they need no account. They are behind a build tag because they reach servers nobody here controls: a red result may mean the API changed, or merely that codeberg.org is down.
+
+They earned their keep on the first run — GitLab paginates a recursive tree at 100 entries and walks depth-first, so a large repository's first page is all directories and the docs list came back empty. Both forges also truncate large trees silently; the cap is now a named constant instead of an accident.

@@ -17,6 +17,68 @@ import (
 // glProject is a GitLab project path, URL-encoded the way the API wants it.
 func glProject(fullName string) string { return url.PathEscape(fullName) }
 
+// forgeTreeEntry is one entry of a repository tree, in the shape both
+// GitLab and Gitea report it.
+type forgeTreeEntry struct {
+	Path string `json:"path"`
+	Type string `json:"type"`
+}
+
+// forgeTreeLimit bounds how much of a repository tree is read. Both forges
+// truncate anyway — Gitea returns 1000 of a 10,000-entry tree and says so
+// only in a field nobody reads — so the cap is stated here rather than
+// inherited by accident. It is ample for what the tree is used for: finding
+// template manifests, which live near the root, and the first 40 markdown
+// files.
+const forgeTreeLimit = 1000
+
+// gitlabTreePage is GitLab's maximum page size.
+const gitlabTreePage = 100
+
+// gitlabTree reads a project's recursive tree.
+//
+// GitLab caps a page at 100 entries and walks depth-first, so one page of a
+// large repository can be nothing but directories — which is exactly how the
+// docs list came back empty for a project full of markdown. Pages are read
+// until one comes back short.
+func gitlabTree(acc Account, token, fullName string) ([]forgeTreeEntry, error) {
+	base := forgeAPI(acc.Scheme, acc.Host)
+	out := []forgeTreeEntry{}
+	for page := 1; page <= forgeTreeLimit/gitlabTreePage; page++ {
+		var batch []forgeTreeEntry
+		u := fmt.Sprintf("%s/projects/%s/repository/tree?recursive=true&per_page=%d&page=%d",
+			base, glProject(fullName), gitlabTreePage, page)
+		if err := forgeDo("GET", u, acc.Scheme, token, nil, &batch); err != nil {
+			if page == 1 {
+				return nil, err
+			}
+			break // a partial tree beats none
+		}
+		out = append(out, batch...)
+		if len(batch) < gitlabTreePage {
+			break
+		}
+	}
+	return out, nil
+}
+
+// giteaTree reads a repository tree in one request. Gitea truncates at its
+// own limit and reports it in `truncated`, which the caller cannot act on —
+// so the cap is the same as GitLab's walk, and both are documented rather
+// than surprising.
+func giteaTree(acc Account, token, fullName, branch string) ([]forgeTreeEntry, error) {
+	var tree struct {
+		Tree      []forgeTreeEntry `json:"tree"`
+		Truncated bool             `json:"truncated"`
+	}
+	u := fmt.Sprintf("%s/repos/%s/git/trees/%s?recursive=1&per_page=%d",
+		forgeAPI(acc.Scheme, acc.Host), fullName, url.PathEscape(branch), forgeTreeLimit)
+	if err := forgeDo("GET", u, acc.Scheme, token, nil, &tree); err != nil {
+		return nil, err
+	}
+	return tree.Tree, nil
+}
+
 // forgeRepoOverview assembles the Cloud preview for a GitLab or Gitea repo.
 func forgeRepoOverview(acc Account, token, fullName string) (RepoOverview, error) {
 	switch acc.Scheme {
@@ -118,12 +180,7 @@ func gitlabOverview(acc Account, token, fullName string) (RepoOverview, error) {
 		}
 	}
 
-	var tree []struct {
-		Path string `json:"path"`
-		Type string `json:"type"`
-	}
-	u := proj + "/repository/tree?recursive=true&per_page=100"
-	if err := forgeDo("GET", u, acc.Scheme, token, nil, &tree); err == nil {
+	if tree, err := gitlabTree(acc, token, fullName); err == nil {
 		for _, t := range tree {
 			if t.Type != "blob" {
 				continue
@@ -192,15 +249,8 @@ func giteaOverview(acc Account, token, fullName string) (RepoOverview, error) {
 	}
 
 	if meta.DefaultBranch != "" {
-		var tree struct {
-			Tree []struct {
-				Path string `json:"path"`
-				Type string `json:"type"`
-			} `json:"tree"`
-		}
-		u := repo + "/git/trees/" + url.PathEscape(meta.DefaultBranch) + "?recursive=1&per_page=1000"
-		if err := forgeDo("GET", u, acc.Scheme, token, nil, &tree); err == nil {
-			for _, t := range tree.Tree {
+		if tree, err := giteaTree(acc, token, fullName, meta.DefaultBranch); err == nil {
+			for _, t := range tree {
 				if t.Type != "blob" {
 					continue
 				}
@@ -232,15 +282,10 @@ func ciStatus(s string) (status, conclusion string) {
 // forgeHasTemplate reports whether a repository carries a template.yml the
 // engine could render, anywhere in its tree.
 func forgeHasTemplate(acc Account, token, fullName, defaultBranch string) bool {
-	base := forgeAPI(acc.Scheme, acc.Host)
 	switch acc.Scheme {
 	case "gitlab":
-		var tree []struct {
-			Path string `json:"path"`
-			Type string `json:"type"`
-		}
-		u := base + "/projects/" + glProject(fullName) + "/repository/tree?recursive=true&per_page=100"
-		if err := forgeDo("GET", u, acc.Scheme, token, nil, &tree); err != nil {
+		tree, err := gitlabTree(acc, token, fullName)
+		if err != nil {
 			return false
 		}
 		for _, t := range tree {
@@ -252,17 +297,11 @@ func forgeHasTemplate(acc Account, token, fullName, defaultBranch string) bool {
 		if defaultBranch == "" {
 			return false
 		}
-		var tree struct {
-			Tree []struct {
-				Path string `json:"path"`
-				Type string `json:"type"`
-			} `json:"tree"`
-		}
-		u := base + "/repos/" + fullName + "/git/trees/" + url.PathEscape(defaultBranch) + "?recursive=1&per_page=1000"
-		if err := forgeDo("GET", u, acc.Scheme, token, nil, &tree); err != nil {
+		tree, err := giteaTree(acc, token, fullName, defaultBranch)
+		if err != nil {
 			return false
 		}
-		for _, t := range tree.Tree {
+		for _, t := range tree {
 			if t.Type == "blob" && isTemplateManifest(t.Path) {
 				return true
 			}

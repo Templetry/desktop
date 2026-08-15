@@ -67,8 +67,12 @@ func forgeDo(method, u, scheme, token string, body, out any) error {
 	if err != nil {
 		return err
 	}
-	k, v := forgeAuth(scheme, token)
-	req.Header.Set(k, v)
+	// An empty token means no header at all, not an empty one: forges reject
+	// a blank credential where they would have served a public repository.
+	if token != "" {
+		k, v := forgeAuth(scheme, token)
+		req.Header.Set(k, v)
+	}
 	req.Header.Set("Accept", "application/json")
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
