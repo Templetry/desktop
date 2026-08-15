@@ -30,6 +30,15 @@ type LocalProject struct {
 	Commit    string            `json:"commit,omitempty"`
 	Variables map[string]string `json:"variables,omitempty"`
 	Features  map[string]bool   `json:"features,omitempty"`
+	Pieces    []AppliedPiece    `json:"pieces,omitempty"`
+}
+
+// AppliedPiece is one piece already adopted, with its own drift anchor —
+// a common piece tracks its own repository, not the form's (ADR-0016).
+type AppliedPiece struct {
+	Name   string `json:"name" yaml:"name"`
+	Source string `json:"source,omitempty" yaml:"source"`
+	Commit string `json:"commit,omitempty" yaml:"commit"`
 }
 
 // maxScanDepth bounds the recursive walk of the repositories folder.
@@ -97,6 +106,7 @@ func readAnswers(dir string) (LocalProject, bool) {
 		} `yaml:"template"`
 		Variables map[string]string `yaml:"variables"`
 		Features  map[string]bool   `yaml:"features"`
+		Pieces    []AppliedPiece    `yaml:"pieces"`
 	}
 	if err := yaml.Unmarshal(data, &ans); err != nil {
 		return LocalProject{}, false
@@ -104,7 +114,7 @@ func readAnswers(dir string) (LocalProject, bool) {
 	return LocalProject{
 		Dir: dir, Kind: "templetry",
 		Template: ans.Template.Name, Source: ans.Template.Source, Commit: ans.Template.Commit,
-		Variables: ans.Variables, Features: ans.Features,
+		Variables: ans.Variables, Features: ans.Features, Pieces: ans.Pieces,
 	}, true
 }
 
@@ -146,45 +156,66 @@ func gitBranch(dir string) string {
 	return head
 }
 
-// Drift marks a project whose template moved past the recorded commit.
+// Drift marks a project with something to pull: its template moved past the
+// recorded commit, or an applied piece did.
 type Drift struct {
-	Dir    string `json:"dir"`
-	Latest string `json:"latest"`
+	Dir string `json:"dir"`
+	// Latest is the template's current head; empty when only pieces moved.
+	Latest string `json:"latest,omitempty"`
+	// Pieces names the applied pieces whose own source moved.
+	Pieces []string `json:"pieces,omitempty"`
 }
 
-// CheckDrift compares each project's recorded template commit against the
-// template's current head. One API call per distinct repo@ref.
+// CheckDrift compares each project's recorded commits against their current
+// heads — the template's and every applied piece's, since a common piece
+// tracks its own repository (ADR-0016). Works on any forge the source
+// scheme names (ADR-0015). One API call per distinct source@ref.
 func (a *App) CheckDrift() ([]Drift, error) {
 	projects, err := a.ScanProjects()
 	if err != nil {
 		return nil, err
 	}
-	a.mu.Lock()
-	token := a.token
-	a.mu.Unlock()
 	cache := map[string]string{}
+	// head resolves a recorded source string to its current commit, or ""
+	// when it cannot be reached — an unreachable source is not drift.
+	head := func(recorded string) string {
+		src, gitRef, _, err := source.ParseSourceString(recorded)
+		if err != nil {
+			return ""
+		}
+		key := src.String() + "@" + gitRef
+		if sha, seen := cache[key]; seen {
+			return sha
+		}
+		sha, err := source.ResolveRef(src, gitRef, a.templateToken(src))
+		if err != nil {
+			sha = ""
+		}
+		cache[key] = sha
+		return sha
+	}
+
 	out := []Drift{}
 	for _, p := range projects {
-		if p.Kind != "templetry" || p.Commit == "" || !strings.HasPrefix(p.Source, "github.com/") {
+		if p.Kind != "templetry" {
 			continue
 		}
-		rest := strings.TrimPrefix(p.Source, "github.com/")
-		repo, right, ok := strings.Cut(rest, "@")
-		if !ok {
-			continue
+		d := Drift{Dir: p.Dir}
+		if p.Commit != "" {
+			if latest := head(p.Source); latest != "" && latest != p.Commit {
+				d.Latest = latest
+			}
 		}
-		ref, _, _ := strings.Cut(right, "/")
-		key := repo + "@" + ref
-		latest, seen := cache[key]
-		if !seen {
-			latest, err = source.ResolveGitHubRef(repo, ref, token)
-			if err != nil {
+		for _, pc := range p.Pieces {
+			if pc.Commit == "" || pc.Source == "" {
 				continue
 			}
-			cache[key] = latest
+			if latest := head(pc.Source); latest != "" && latest != pc.Commit {
+				d.Pieces = append(d.Pieces, pc.Name)
+			}
 		}
-		if latest != p.Commit {
-			out = append(out, Drift{Dir: p.Dir, Latest: latest})
+		if d.Latest != "" || len(d.Pieces) > 0 {
+			out = append(out, d)
 		}
 	}
 	return out, nil

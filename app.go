@@ -108,15 +108,40 @@ func (a *App) GetCatalogs() []LoadedCatalog {
 	return out
 }
 
+// templateToken is the credential to read a template with: the token of a
+// signed-in account on that very host, falling back to TEMPLETRY_TOKEN so
+// the app behaves like the CLI when no account matches. Never call it
+// while holding a.mu — it takes the lock itself.
+func (a *App) templateToken(src source.Ref) string {
+	for _, acc := range a.GetAccounts() {
+		if acc.Scheme != src.Scheme || acc.Host != src.Host {
+			continue
+		}
+		if acc.Scheme == "github" {
+			a.mu.Lock()
+			token := a.token
+			a.mu.Unlock()
+			return token
+		}
+		if token, err := accountToken(acc); err == nil {
+			return token
+		}
+	}
+	return os.Getenv("TEMPLETRY_TOKEN")
+}
+
 // fetchBundle downloads and caches a form's template from a named catalog.
+// The catalog says where each parent lives, so a form may be hosted on
+// GitLab or Gitea just as well as GitHub (ADR-0015).
 func (a *App) fetchBundle(cat, ref string) (*bundle, error) {
 	key := cat + "::" + ref
 	a.mu.Lock()
-	defer a.mu.Unlock()
-	if b, ok := a.cache[key]; ok {
-		return b, nil
-	}
+	cached, ok := a.cache[key]
 	reg := a.regs[cat]
+	a.mu.Unlock()
+	if ok {
+		return cached, nil
+	}
 	if reg == nil {
 		return nil, fmt.Errorf("catalog %q not loaded yet", cat)
 	}
@@ -124,7 +149,15 @@ func (a *App) fetchBundle(cat, ref string) (*bundle, error) {
 	if err != nil {
 		return nil, err
 	}
-	files, err := source.FetchGitHubTarball(parent.Repo, parent.Ref, form.Path)
+	src, err := source.ParseRef(parent.SourceRef())
+	if err != nil {
+		return nil, err
+	}
+
+	// The network happens outside the lock: fetching a template must not
+	// freeze the rest of the app.
+	token := a.templateToken(src)
+	files, err := source.Fetch(src, parent.Ref, form.Path, token)
 	if err != nil {
 		return nil, err
 	}
@@ -140,16 +173,18 @@ func (a *App) fetchBundle(cat, ref string) (*bundle, error) {
 		return nil, err
 	}
 	commit := ""
-	if sha, err := source.ResolveGitHubRef(parent.Repo, parent.Ref, a.token); err == nil {
+	if sha, err := source.ResolveRef(src, parent.Ref, token); err == nil {
 		commit = sha
 	}
 	b := &bundle{
 		files:    files,
 		manifest: m,
-		source:   fmt.Sprintf("github.com/%s@%s/%s", parent.Repo, parent.Ref, form.Path),
+		source:   source.FormatSource(src, parent.Ref, form.Path),
 		commit:   commit,
 	}
+	a.mu.Lock()
 	a.cache[key] = b
+	a.mu.Unlock()
 	return b, nil
 }
 

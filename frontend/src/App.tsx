@@ -31,6 +31,23 @@ function repoKey(r: { forge?: string; fullName: string }) {
     return ((r.forge ?? "") + "::" + r.fullName).toLowerCase();
 }
 
+// Drift covers both anchors a project carries: its template's commit and
+// each applied piece's own (ADR-0016), so the chip has to say which moved.
+type Drift = { latest?: string; pieces?: string[] };
+
+function driftLabel(d: Drift) {
+    if (d.latest && d.pieces?.length) return "updates available";
+    if (d.latest) return "template updated";
+    return d.pieces?.length === 1 ? "piece updated" : "pieces updated";
+}
+
+function driftTitle(p: { commit?: string }, d: Drift) {
+    const parts: string[] = [];
+    if (d.latest) parts.push(`Template moved: ${(p.commit ?? "").slice(0, 7)} → ${d.latest.slice(0, 7)}`);
+    if (d.pieces?.length) parts.push(`Pieces moved: ${d.pieces.join(", ")}`);
+    return parts.join(" · ");
+}
+
 // resolveDoc joins a relative markdown link against the current doc's folder.
 function resolveDoc(from: string, href: string) {
     const parts = from.includes("/") ? from.slice(0, from.lastIndexOf("/")).split("/") : [];
@@ -111,7 +128,7 @@ function App() {
         }).catch((e: any) => { if (announce) setError(String(e)); });
     };
 
-    const [drifts, setDrifts] = useState<Record<string, string>>({});
+    const [drifts, setDrifts] = useState<Record<string, Drift>>({});
     const [updPrev, setUpdPrev] = useState<any>(null);
     const [updSel, setUpdSel] = useState("");
     const [updContent, setUpdContent] = useState("");
@@ -156,7 +173,7 @@ function App() {
             .catch((e: any) => setError(String(e)))
             .finally(() => setBusy(false));
         CheckDrift().then((list: any[]) =>
-            setDrifts(Object.fromEntries((list ?? []).map((d: any) => [d.dir, d.latest]))))
+            setDrifts(Object.fromEntries((list ?? []).map((d: any) => [d.dir, d]))))
             .catch(() => {});
     };
 
@@ -834,9 +851,8 @@ function App() {
                                                     {p.name}
                                                     {p.kind === "git" && <em className="gitchip">git</em>}
                                                     {drifts[p.dir] && (
-                                                        <em className="driftchip"
-                                                            title={`Template moved: ${(p.commit ?? "").slice(0, 7)} → ${drifts[p.dir].slice(0, 7)}`}>
-                                                            template updated
+                                                        <em className="driftchip" title={driftTitle(p, drifts[p.dir])}>
+                                                            {driftLabel(drifts[p.dir])}
                                                         </em>
                                                     )}
                                                 </strong>
