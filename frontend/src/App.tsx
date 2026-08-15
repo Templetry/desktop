@@ -14,12 +14,40 @@ import {
 import { EventsOn, EventsOff } from "../wailsjs/runtime";
 import "./App.css";
 
-type Form = { form: string; name: string; path: string; status: string; description?: string };
+// The taxonomy every form declares (ADR-0017). Three axes, each a list,
+// because a form is usually more than one thing.
+type Taxonomy = { kinds?: string[]; languages?: string[]; frameworks?: string[] };
+type Form = { form: string; name: string; path: string; status: string; description?: string } & Taxonomy;
+type TemplateForm = { path: string; name?: string; description?: string } & Taxonomy;
+
+// The closed vocabulary, in the order the ADR lists it — not alphabetical,
+// so the chips read as a spectrum rather than a dictionary.
+const KINDS = [
+    "frontend", "backend", "database", "infra",
+    "multiplatform", "android", "ios", "desktop", "cli",
+] as const;
+
+function axesOf(t: Taxonomy): string[] {
+    return [...(t.kinds ?? []), ...(t.languages ?? []), ...(t.frameworks ?? [])];
+}
+
+/** The three axes as chips. Kinds are marked so the primary axis reads first. */
+function Tags({ of, className = "" }: { of: Taxonomy; className?: string }) {
+    const kinds = of.kinds ?? [];
+    const rest = [...(of.languages ?? []), ...(of.frameworks ?? [])];
+    if (!kinds.length && !rest.length) return null;
+    return (
+        <span className={`taxtags ${className}`}>
+            {kinds.map((k) => <em key={"k" + k} className="taxtag kind">{k}</em>)}
+            {rest.map((v) => <em key={"v" + v} className="taxtag">{v}</em>)}
+        </span>
+    );
+}
 type Parent = { key: string; label?: string; repo: string; ref: string; forms: Form[] };
 type Variable = { key: string; label?: string; type?: string; pattern?: string; options?: string[]; default?: string };
 type Feature = { key: string; label?: string; default?: boolean; requires?: string[]; conflicts?: string[] };
 type Preset = { key: string; label?: string; features?: Record<string, boolean> };
-type Manifest = { name: string; description?: string; variables?: Variable[]; features?: Feature[]; presets?: Preset[] };
+type Manifest = { name: string; description?: string; variables?: Variable[]; features?: Feature[]; presets?: Preset[] } & Taxonomy;
 
 const LICENSES = ["", "mit", "apache-2.0", "gpl-3.0", "bsd-3-clause", "mpl-2.0", "unlicense"];
 
@@ -112,6 +140,35 @@ function App() {
     const [repoFilter, setRepoFilter] = useState("");
     const [ownerFilter, setOwnerFilter] = useState("");
     const [repoMsg, setRepoMsg] = useState("");
+
+    // Catalog filtering (ADR-0017): kind chips are OR within the axis, and
+    // the text box AND's over everything a form declares — the same
+    // semantics as `templetry list --kind … --language …`.
+    const [kindFilter, setKindFilter] = useState<string[]>([]);
+    const [formFilter, setFormFilter] = useState("");
+
+    const toggleKind = (k: string) =>
+        setKindFilter((ks) => (ks.includes(k) ? ks.filter((x) => x !== k) : [...ks, k]));
+
+    // Only the kinds the loaded catalogs actually use — a chip that can
+    // never match anything is noise.
+    const availableKinds = useMemo(() => {
+        const present = new Set<string>();
+        for (const c of catalogs)
+            for (const p of c.parents ?? [])
+                for (const f of p.forms ?? []) (f.kinds ?? []).forEach((k: string) => present.add(k));
+        return KINDS.filter((k) => present.has(k));
+    }, [catalogs]);
+
+    const matchesFilter = (f: Form) => {
+        if (kindFilter.length && !kindFilter.some((k) => (f.kinds ?? []).includes(k))) return false;
+        const q = formFilter.trim().toLowerCase();
+        if (!q) return true;
+        return [f.form, f.name, f.description ?? "", ...axesOf(f)]
+            .join(" ").toLowerCase().includes(q);
+    };
+
+    const filteringCatalog = kindFilter.length > 0 || formFilter.trim() !== "";
 
     const [projects, setProjects] = useState<any[]>([]);
     const [projFilter, setProjFilter] = useState("");
@@ -619,32 +676,67 @@ function App() {
                                 ))}
                             </div>
                         )}
-                        {view === "build" && catalogs.map((c) => (
-                            <div key={c.name} className="catalog">
-                                <div className="cathead">
-                                    <span>{c.name}</span>
-                                    {c.official && <em className="badge">official</em>}
-                                </div>
-                                {c.error && <p className="caterr">{c.error}</p>}
-                                {(c.parents ?? []).map((p: Parent) => (
-                                    <div key={c.name + p.key} className="parent">
-                                        <h2>{p.label ?? p.key}<em>{p.forms.length}</em></h2>
-                                        {p.forms.map((f) => {
-                                            const ref = `${p.key}/${f.form}`;
-                                            const active = selectedCat === c.name && selected === ref;
-                                            const ready = !f.status || f.status === "ready";
-                                            return (
-                                                <button key={ref} className={`form ${active ? "active" : ""}`}
-                                                    disabled={!ready} onClick={() => pick(c.name, ref)} title={f.description}>
-                                                    <span>{f.form}</span>
-                                                    {!ready && <em>{f.status}</em>}
-                                                </button>
-                                            );
-                                        })}
+                        {view === "build" && (
+                            <div className="filters">
+                                <input className="formsearch" value={formFilter} placeholder="Filter templates…"
+                                    onChange={(e) => setFormFilter(e.target.value)} />
+                                {availableKinds.length > 0 && (
+                                    <div className="kindchips">
+                                        {availableKinds.map((k) => (
+                                            <button key={k}
+                                                className={`taxtag kind ${kindFilter.includes(k) ? "on" : ""}`}
+                                                title={`Show only ${k} templates`}
+                                                onClick={() => toggleKind(k)}>{k}</button>
+                                        ))}
                                     </div>
-                                ))}
+                                )}
+                                {filteringCatalog && (
+                                    <button className="clearfilter"
+                                        onClick={() => { setKindFilter([]); setFormFilter(""); }}>
+                                        Clear filter
+                                    </button>
+                                )}
                             </div>
-                        ))}
+                        )}
+                        {view === "build" && catalogs.map((c) => {
+                            const parents = (c.parents ?? [])
+                                .map((p: Parent) => ({ p, forms: p.forms.filter(matchesFilter) }))
+                                .filter((x: any) => x.forms.length > 0);
+                            if (!parents.length && filteringCatalog && !c.error) return null;
+                            return (
+                                <div key={c.name} className="catalog">
+                                    <div className="cathead">
+                                        <span>{c.name}</span>
+                                        {c.official && <em className="badge">official</em>}
+                                    </div>
+                                    {c.error && <p className="caterr">{c.error}</p>}
+                                    {parents.map(({ p, forms }: { p: Parent; forms: Form[] }) => (
+                                        <div key={c.name + p.key} className="parent">
+                                            <h2>{p.label ?? p.key}<em>{forms.length}</em></h2>
+                                            {forms.map((f) => {
+                                                const ref = `${p.key}/${f.form}`;
+                                                const active = selectedCat === c.name && selected === ref;
+                                                const ready = !f.status || f.status === "ready";
+                                                return (
+                                                    <button key={ref} className={`form ${active ? "active" : ""}`}
+                                                        disabled={!ready} onClick={() => pick(c.name, ref)} title={f.description}>
+                                                        <span>{f.form}</span>
+                                                        {!ready && <em>{f.status}</em>}
+                                                        <Tags of={f} />
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })}
+                        {view === "build" && filteringCatalog &&
+                            !catalogs.some((c) => (c.parents ?? []).some((p: Parent) => p.forms.some(matchesFilter))) && (
+                            <p className="caterr">
+                                No template matches. Forms that declare no taxonomy never match a kind.
+                            </p>
+                        )}
                     </>
                 )}
             </aside>
@@ -1194,10 +1286,24 @@ function App() {
                                                 {(cloudPrev.data.branches ?? []).join(" · ") || "—"}
                                             </p>
                                             {(cloudPrev.data.templateForms ?? []).length > 0 && (
-                                                <p className="ovrow tplrow"><span>Template</span>
-                                                    engine-readable — {(cloudPrev.data.templateForms ?? [])
-                                                        .map((f: string) => f === "." ? "(root)" : f).join(" · ")}
-                                                </p>
+                                                <div className="ovrow tplrow">
+                                                    <span>Template</span>
+                                                    <div className="tplforms">
+                                                        {(cloudPrev.data.templateForms ?? []).map((f: TemplateForm) => (
+                                                            <div key={f.path} className="tplform">
+                                                                <strong>{f.path === "." ? "(root)" : f.path}</strong>
+                                                                {f.name && <em className="tplname">{f.name}</em>}
+                                                                <Tags of={f} />
+                                                                {f.description && <span className="desc">{f.description}</span>}
+                                                                {!f.name && (
+                                                                    <span className="desc">
+                                                                        carries a template.yml the engine could not read
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             )}
                                         </div>
                                         {(cloudPrev.data.runs ?? []).length > 0 && (
@@ -1244,6 +1350,7 @@ function App() {
                         <header>
                             <h2>{manifest.name}</h2>
                             {manifest.description && <p>{manifest.description}</p>}
+                            <Tags of={manifest} className="header" />
                         </header>
                         <div className="workspace">
                         <div className="formcol">

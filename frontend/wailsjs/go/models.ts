@@ -6,6 +6,9 @@ export namespace catalog {
 	    path: string;
 	    status: string;
 	    description?: string;
+	    kinds?: string[];
+	    languages?: string[];
+	    frameworks?: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new Form(source);
@@ -18,6 +21,9 @@ export namespace catalog {
 	        this.path = source["path"];
 	        this.status = source["status"];
 	        this.description = source["description"];
+	        this.kinds = source["kinds"];
+	        this.languages = source["languages"];
+	        this.frameworks = source["frameworks"];
 	    }
 	}
 	export class Parent {
@@ -175,7 +181,8 @@ export namespace main {
 	}
 	export class Drift {
 	    dir: string;
-	    latest: string;
+	    latest?: string;
+	    pieces?: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new Drift(source);
@@ -185,6 +192,7 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.dir = source["dir"];
 	        this.latest = source["latest"];
+	        this.pieces = source["pieces"];
 	    }
 	}
 	export class LangShare {
@@ -426,6 +434,28 @@ export namespace main {
 	        this.forge = source["forge"];
 	    }
 	}
+	export class TemplateForm {
+	    path: string;
+	    name?: string;
+	    description?: string;
+	    kinds?: string[];
+	    languages?: string[];
+	    frameworks?: string[];
+
+	    static createFrom(source: any = {}) {
+	        return new TemplateForm(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.kinds = source["kinds"];
+	        this.languages = source["languages"];
+	        this.frameworks = source["frameworks"];
+	    }
+	}
 	export class RepoOverview {
 	    description: string;
 	    defaultBranch: string;
@@ -433,7 +463,7 @@ export namespace main {
 	    branches: string[];
 	    runs: CIRun[];
 	    docs: string[];
-	    templateForms: string[];
+	    templateForms: TemplateForm[];
 	
 	    static createFrom(source: any = {}) {
 	        return new RepoOverview(source);
@@ -447,7 +477,7 @@ export namespace main {
 	        this.branches = source["branches"];
 	        this.runs = this.convertValues(source["runs"], CIRun);
 	        this.docs = source["docs"];
-	        this.templateForms = source["templateForms"];
+	        this.templateForms = this.convertValues(source["templateForms"], TemplateForm);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

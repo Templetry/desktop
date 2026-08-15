@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Templetry/engine/manifest"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -269,16 +270,33 @@ type CIRun struct {
 	UpdatedAt  string `json:"updatedAt"`
 }
 
+// TemplateForm is a form found inside a repository: something the engine
+// could render, described by its own manifest (ADR-0017), so a template repo
+// says what it is instead of only that it is one.
+type TemplateForm struct {
+	Path        string   `json:"path"` // directory holding the manifest; "." for the root
+	Name        string   `json:"name,omitempty"`
+	Description string   `json:"description,omitempty"`
+	Kinds       []string `json:"kinds,omitempty"`
+	Languages   []string `json:"languages,omitempty"`
+	Frameworks  []string `json:"frameworks,omitempty"`
+}
+
 // RepoOverview is the Cloud preview: state summary of one repository, on
 // whichever forge it lives.
 type RepoOverview struct {
-	Description   string      `json:"description"`
-	DefaultBranch string      `json:"defaultBranch"`
-	Languages     []LangShare `json:"languages"`
-	Branches      []string    `json:"branches"`
-	Runs          []CIRun     `json:"runs"`
-	Docs          []string    `json:"docs"`
-	TemplateForms []string    `json:"templateForms"`
+	Description   string         `json:"description"`
+	DefaultBranch string         `json:"defaultBranch"`
+	Languages     []LangShare    `json:"languages"`
+	Branches      []string       `json:"branches"`
+	Runs          []CIRun        `json:"runs"`
+	Docs          []string       `json:"docs"`
+	TemplateForms []TemplateForm `json:"templateForms"`
+
+	// manifests are the manifest paths the tree walk found, kept between
+	// building the overview and describing the forms. Unexported, so it
+	// never reaches the UI.
+	manifests []string
 }
 
 // repoAccount resolves the account a Cloud row belongs to, with its token.
@@ -315,14 +333,62 @@ func (a *App) repoAccount(forge string) (Account, string, error) {
 // GetRepoOverview assembles the Cloud preview for one repository. The forge
 // key comes from the listing row; empty means the GitHub OAuth session.
 func (a *App) GetRepoOverview(fullName, forge string) (RepoOverview, error) {
+	var out RepoOverview
+	var err error
 	if forge != "" && !strings.HasPrefix(forge, "github@") {
-		acc, token, err := a.repoAccount(forge)
-		if err != nil {
-			return RepoOverview{}, err
+		acc, token, aerr := a.repoAccount(forge)
+		if aerr != nil {
+			return RepoOverview{}, aerr
 		}
-		return forgeRepoOverview(acc, token, fullName)
+		out, err = forgeRepoOverview(acc, token, fullName)
+	} else {
+		out, err = a.githubRepoOverview(fullName)
 	}
-	return a.githubRepoOverview(fullName)
+	if err != nil {
+		return out, err
+	}
+	// Reading the manifests is a separate pass so both forge paths get it
+	// from one place — and so a template repo can show what it *is*, not
+	// merely that it is one.
+	out.TemplateForms = a.describeForms(fullName, forge, out.manifests)
+	return out, nil
+}
+
+// maxDescribedForms bounds the manifest reads: one request each, and a repo
+// with more forms than this is describing itself well enough already.
+const maxDescribedForms = 12
+
+// describeForms reads each manifest and reports its taxonomy. A manifest
+// that cannot be fetched or does not parse still yields its path — the file
+// is there, it simply says nothing the engine understands.
+func (a *App) describeForms(fullName, forge string, manifests []string) []TemplateForm {
+	if len(manifests) > maxDescribedForms {
+		manifests = manifests[:maxDescribedForms]
+	}
+	out := make([]TemplateForm, len(manifests))
+	var wg sync.WaitGroup
+	for i, p := range manifests {
+		out[i] = TemplateForm{Path: path.Dir(p)}
+		wg.Add(1)
+		go func(i int, p string) {
+			defer wg.Done()
+			data, err := a.GetRepoDoc(fullName, p, forge)
+			if err != nil {
+				return
+			}
+			m, err := manifest.Load([]byte(data))
+			if err != nil {
+				return
+			}
+			out[i].Name = m.Name
+			out[i].Description = m.Description
+			out[i].Kinds = m.Kinds
+			out[i].Languages = m.Languages
+			out[i].Frameworks = m.Frameworks
+		}(i, p)
+	}
+	wg.Wait()
+	return out
 }
 
 // githubRepoOverview is the GitHub implementation. Each sub-request degrades
@@ -419,7 +485,9 @@ func sortDocs(docs []string) {
 func collectTreeEntry(out *RepoOverview, p string) {
 	name := strings.ToLower(path.Base(p))
 	if name == "template.yml" || name == "template.yaml" {
-		out.TemplateForms = append(out.TemplateForms, path.Dir(p))
+		// The full path, not its directory: the manifest has to be fetched
+		// afterwards to learn what the form is.
+		out.manifests = append(out.manifests, p)
 	}
 	if strings.HasSuffix(name, ".md") && len(out.Docs) < 40 {
 		out.Docs = append(out.Docs, p)
