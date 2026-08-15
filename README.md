@@ -12,10 +12,12 @@ Built with [Wails](https://wails.io): a Go backend that imports the engine packa
 
 ## Also in the box
 
-- **GitHub sign-in** via OAuth device flow (scopes `repo workflow`) — no server, no hosted OAuth.
+- **Accounts on several forges**: GitHub via OAuth device flow, GitLab and Gitea/Forgejo via a personal access token stored in the OS keyring — plus **BYOR**, which pushes to *any* git host from a pasted repository URL ([ADR-0015](https://github.com/Templetry/wiki/blob/main/adr/0015-multi-forge-foundation.md)).
 - **Template updates**: drift detection → assisted update → three-way merge, anchored on the answers file.
 - **Multi-catalog** support — any registry.json (schema v2) plugs into the sidebar.
-- **In-app updater** checking published stable releases.
+- **In-app updater** checking published stable releases (Windows).
+
+Builds for **Windows** (installer + portable), **Linux** and **macOS** (universal).
 
 ## Install
 
