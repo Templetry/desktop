@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -31,6 +32,15 @@ type Repo struct {
 	// Forge is the account key ("<scheme>@<host>") the repo came from;
 	// empty means the GitHub OAuth session.
 	Forge string `json:"forge,omitempty"`
+	// DefaultBranch is needed to read a tree on forges whose tree endpoint
+	// demands a ref. Not every listing supplies it.
+	DefaultBranch string `json:"defaultBranch,omitempty"`
+}
+
+// repoKey identifies a repository across forges: the same owner/name can
+// exist on GitHub and on a company GitLab, and they are not the same repo.
+func repoKey(forge, fullName string) string {
+	return strings.ToLower(forge + "::" + fullName)
 }
 
 // ListRepos returns the user's repositories across personal account and orgs,
@@ -130,38 +140,117 @@ func (a *App) ListTemplateRepos() ([]string, error) {
 	a.mu.Lock()
 	token, login := a.token, a.auth.Login
 	a.mu.Unlock()
-	if token == "" {
-		return nil, fmt.Errorf("sign in first")
-	}
-	q := "filename:template.yml user:" + login
-	var orgs []struct {
-		Login string `json:"login"`
-	}
-	if err := a.ghJSON("https://api.github.com/user/orgs", &orgs); err == nil {
-		for _, o := range orgs {
-			q += " org:" + o.Login
-		}
-	}
-	var res struct {
-		Items []struct {
-			Repository struct {
-				FullName string `json:"full_name"`
-			} `json:"repository"`
-		} `json:"items"`
-	}
-	if err := a.ghJSON("https://api.github.com/search/code?per_page=100&q="+url.QueryEscape(q), &res); err != nil {
-		return nil, err
-	}
+
 	seen := map[string]bool{}
 	out := []string{}
-	for _, it := range res.Items {
-		fn := strings.ToLower(it.Repository.FullName)
-		if !seen[fn] {
-			seen[fn] = true
-			out = append(out, fn)
+	add := func(forge, fullName string) {
+		k := repoKey(forge, fullName)
+		if !seen[k] {
+			seen[k] = true
+			out = append(out, k)
 		}
 	}
+
+	// GitHub answers in one code-search call covering the user and orgs.
+	if token != "" {
+		q := "filename:template.yml user:" + login
+		var orgs []struct {
+			Login string `json:"login"`
+		}
+		if err := a.ghJSON("https://api.github.com/user/orgs", &orgs); err == nil {
+			for _, o := range orgs {
+				q += " org:" + o.Login
+			}
+		}
+		var res struct {
+			Items []struct {
+				Repository struct {
+					FullName string `json:"full_name"`
+				} `json:"repository"`
+			} `json:"items"`
+		}
+		if err := a.ghJSON("https://api.github.com/search/code?per_page=100&q="+url.QueryEscape(q), &res); err == nil {
+			for _, it := range res.Items {
+				add("", it.Repository.FullName)
+			}
+		}
+	}
+
+	// Other forges have no comparable content search across repositories,
+	// so each candidate's tree is read instead — bounded, because that is
+	// one request per repository.
+	for _, acc := range a.GetAccounts() {
+		if acc.Scheme == "github" {
+			continue
+		}
+		tok, err := accountToken(acc)
+		if err != nil {
+			continue
+		}
+		repos, err := forgeListRepos(acc, tok)
+		if err != nil {
+			continue
+		}
+		if len(repos) > templateProbeLimit {
+			repos = repos[:templateProbeLimit]
+		}
+		for _, r := range probeTemplates(acc, tok, repos) {
+			add(acc.Key(), r)
+		}
+	}
+
+	if len(out) == 0 && token == "" && len(a.GetAccounts()) == 0 {
+		return nil, fmt.Errorf("sign in first")
+	}
 	return out, nil
+}
+
+// templateProbeLimit caps how many repositories per account get a tree read
+// when looking for templates. Beyond it, repos simply go unflagged rather
+// than the listing turning into a request storm.
+const templateProbeLimit = 40
+
+// probeTemplates reads repository trees concurrently and returns the full
+// names carrying a template.yml.
+func probeTemplates(acc Account, token string, repos []Repo) []string {
+	type result struct {
+		name string
+		ok   bool
+	}
+	jobs := make(chan Repo)
+	results := make(chan result)
+	workers := 6
+	if len(repos) < workers {
+		workers = len(repos)
+	}
+	if workers == 0 {
+		return nil
+	}
+	var wg sync.WaitGroup
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for r := range jobs {
+				results <- result{r.FullName, forgeHasTemplate(acc, token, r.FullName, r.DefaultBranch)}
+			}
+		}()
+	}
+	go func() {
+		for _, r := range repos {
+			jobs <- r
+		}
+		close(jobs)
+		wg.Wait()
+		close(results)
+	}()
+	out := []string{}
+	for res := range results {
+		if res.ok {
+			out = append(out, res.name)
+		}
+	}
+	return out
 }
 
 // LangShare is one language's slice of a repo, in percent.
@@ -180,7 +269,8 @@ type CIRun struct {
 	UpdatedAt  string `json:"updatedAt"`
 }
 
-// RepoOverview is the Cloud preview: state summary of one GitHub repo.
+// RepoOverview is the Cloud preview: state summary of one repository, on
+// whichever forge it lives.
 type RepoOverview struct {
 	Description   string      `json:"description"`
 	DefaultBranch string      `json:"defaultBranch"`
@@ -191,10 +281,54 @@ type RepoOverview struct {
 	TemplateForms []string    `json:"templateForms"`
 }
 
-// GetRepoOverview assembles the Cloud preview for one repository. Each
-// sub-request degrades independently — a repo without Actions or docs
-// still yields a useful overview.
-func (a *App) GetRepoOverview(fullName string) (RepoOverview, error) {
+// repoAccount resolves the account a Cloud row belongs to, with its token.
+// An empty forge key means the GitHub OAuth session.
+func (a *App) repoAccount(forge string) (Account, string, error) {
+	if forge == "" {
+		a.mu.Lock()
+		token, auth := a.token, a.auth
+		a.mu.Unlock()
+		if token == "" {
+			return Account{}, "", fmt.Errorf("sign in first")
+		}
+		return Account{Scheme: "github", Host: "github.com", Login: auth.Login}, token, nil
+	}
+	for _, acc := range a.GetAccounts() {
+		if acc.Key() != forge {
+			continue
+		}
+		if acc.Scheme == "github" {
+			a.mu.Lock()
+			token := a.token
+			a.mu.Unlock()
+			return acc, token, nil
+		}
+		token, err := accountToken(acc)
+		if err != nil {
+			return Account{}, "", fmt.Errorf("no stored token for %s — sign in again", forge)
+		}
+		return acc, token, nil
+	}
+	return Account{}, "", fmt.Errorf("no signed-in account for %s", forge)
+}
+
+// GetRepoOverview assembles the Cloud preview for one repository. The forge
+// key comes from the listing row; empty means the GitHub OAuth session.
+func (a *App) GetRepoOverview(fullName, forge string) (RepoOverview, error) {
+	if forge != "" && !strings.HasPrefix(forge, "github@") {
+		acc, token, err := a.repoAccount(forge)
+		if err != nil {
+			return RepoOverview{}, err
+		}
+		return forgeRepoOverview(acc, token, fullName)
+	}
+	return a.githubRepoOverview(fullName)
+}
+
+// githubRepoOverview is the GitHub implementation. Each sub-request degrades
+// independently — a repo without Actions or docs still yields a useful
+// overview.
+func (a *App) githubRepoOverview(fullName string) (RepoOverview, error) {
 	out := RepoOverview{}
 	base := "https://api.github.com/repos/" + fullName
 	var meta struct {
@@ -256,33 +390,64 @@ func (a *App) GetRepoOverview(fullName string) (RepoOverview, error) {
 			if t.Type != "blob" {
 				continue
 			}
-			name := strings.ToLower(path.Base(t.Path))
-			if name == "template.yml" || name == "template.yaml" {
-				out.TemplateForms = append(out.TemplateForms, path.Dir(t.Path))
-			}
-			if strings.HasSuffix(name, ".md") && len(out.Docs) < 40 {
-				out.Docs = append(out.Docs, t.Path)
-			}
+			collectTreeEntry(&out, t.Path)
 		}
-		// README first, then shallow before deep, then alphabetical.
-		sort.SliceStable(out.Docs, func(i, j int) bool {
-			ri := strings.EqualFold(out.Docs[i], "README.md")
-			rj := strings.EqualFold(out.Docs[j], "README.md")
-			if ri != rj {
-				return ri
-			}
-			di, dj := strings.Count(out.Docs[i], "/"), strings.Count(out.Docs[j], "/")
-			if di != dj {
-				return di < dj
-			}
-			return out.Docs[i] < out.Docs[j]
-		})
+		sortDocs(out.Docs)
 	}
 	return out, nil
 }
 
+// sortDocs orders a markdown listing: README first, then shallow before
+// deep, then alphabetical.
+func sortDocs(docs []string) {
+	sort.SliceStable(docs, func(i, j int) bool {
+		ri := strings.EqualFold(docs[i], "README.md")
+		rj := strings.EqualFold(docs[j], "README.md")
+		if ri != rj {
+			return ri
+		}
+		di, dj := strings.Count(docs[i], "/"), strings.Count(docs[j], "/")
+		if di != dj {
+			return di < dj
+		}
+		return docs[i] < docs[j]
+	})
+}
+
+// collectTreeEntry folds one repository tree blob into an overview: forms
+// the engine could render, and markdown worth reading.
+func collectTreeEntry(out *RepoOverview, p string) {
+	name := strings.ToLower(path.Base(p))
+	if name == "template.yml" || name == "template.yaml" {
+		out.TemplateForms = append(out.TemplateForms, path.Dir(p))
+	}
+	if strings.HasSuffix(name, ".md") && len(out.Docs) < 40 {
+		out.Docs = append(out.Docs, p)
+	}
+}
+
+// decodeContent unwraps a forge "contents" response, which is base64 on
+// every forge that bothers to say so.
+func decodeContent(content, encoding string) (string, error) {
+	if encoding != "base64" {
+		return content, nil
+	}
+	data, err := base64.StdEncoding.DecodeString(strings.ReplaceAll(content, "\n", ""))
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
 // GetRepoDoc fetches one markdown file of a repo, decoded.
-func (a *App) GetRepoDoc(fullName, docPath string) (string, error) {
+func (a *App) GetRepoDoc(fullName, docPath, forge string) (string, error) {
+	if forge != "" && !strings.HasPrefix(forge, "github@") {
+		acc, token, err := a.repoAccount(forge)
+		if err != nil {
+			return "", err
+		}
+		return forgeRepoDoc(acc, token, fullName, docPath)
+	}
 	var res struct {
 		Content  string `json:"content"`
 		Encoding string `json:"encoding"`
@@ -290,14 +455,7 @@ func (a *App) GetRepoDoc(fullName, docPath string) (string, error) {
 	if err := a.ghJSON("https://api.github.com/repos/"+fullName+"/contents/"+docPath, &res); err != nil {
 		return "", err
 	}
-	if res.Encoding == "base64" {
-		data, err := base64.StdEncoding.DecodeString(strings.ReplaceAll(res.Content, "\n", ""))
-		if err != nil {
-			return "", err
-		}
-		return string(data), nil
-	}
-	return res.Content, nil
+	return decodeContent(res.Content, res.Encoding)
 }
 
 // OpenRepo opens a repository page in the default browser.
@@ -306,13 +464,12 @@ func (a *App) OpenRepo(url string) {
 }
 
 // CloneRepo clones a repository into the remembered parent folder and
-// returns the local path.
-func (a *App) CloneRepo(cloneURL, name string) (string, error) {
-	a.mu.Lock()
-	token, login := a.token, a.auth.Login
-	a.mu.Unlock()
-	if token == "" {
-		return "", fmt.Errorf("sign in first")
+// returns the local path. It authenticates as the account the repository
+// came from, so a private repo on any signed-in forge clones too.
+func (a *App) CloneRepo(cloneURL, name, forge string) (string, error) {
+	acc, token, err := a.repoAccount(forge)
+	if err != nil {
+		return "", err
 	}
 	parent := effectiveParentDir()
 	if parent == "" {
@@ -322,7 +479,7 @@ func (a *App) CloneRepo(cloneURL, name string) (string, error) {
 	if _, err := os.Stat(target); err == nil {
 		return "", fmt.Errorf("%s already exists", target)
 	}
-	if err := runGit(parent, token, login, "clone", cloneURL, name); err != nil {
+	if err := runGit(parent, gitAuthFor(acc, token), "clone", cloneURL, name); err != nil {
 		return "", err
 	}
 	return target, nil

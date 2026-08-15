@@ -18,7 +18,7 @@ export function ChooseOutputDir():Promise<string>;
 
 export function ChooseParentDir():Promise<string>;
 
-export function CloneRepo(arg1:string,arg2:string):Promise<string>;
+export function CloneRepo(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function CreateFullProject(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:boolean,arg8:string,arg9:Record<string, string>,arg10:Record<string, boolean>):Promise<main.CreatedProject>;
 
@@ -44,9 +44,9 @@ export function GetOwnerOptions():Promise<Array<main.OwnerOption>>;
 
 export function GetOwners():Promise<Array<string>>;
 
-export function GetRepoDoc(arg1:string,arg2:string):Promise<string>;
+export function GetRepoDoc(arg1:string,arg2:string,arg3:string):Promise<string>;
 
-export function GetRepoOverview(arg1:string):Promise<main.RepoOverview>;
+export function GetRepoOverview(arg1:string,arg2:string):Promise<main.RepoOverview>;
 
 export function GetSettings():Promise<main.appConfig>;
 

@@ -30,8 +30,8 @@ export function ChooseParentDir() {
   return window['go']['main']['App']['ChooseParentDir']();
 }
 
-export function CloneRepo(arg1, arg2) {
-  return window['go']['main']['App']['CloneRepo'](arg1, arg2);
+export function CloneRepo(arg1, arg2, arg3) {
+  return window["go"]["main"]["App"]["CloneRepo"](arg1, arg2, arg3);
 }
 
 export function CreateFullProject(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) {
@@ -82,12 +82,12 @@ export function GetOwners() {
   return window['go']['main']['App']['GetOwners']();
 }
 
-export function GetRepoDoc(arg1, arg2) {
-  return window['go']['main']['App']['GetRepoDoc'](arg1, arg2);
+export function GetRepoDoc(arg1, arg2, arg3) {
+  return window["go"]["main"]["App"]["GetRepoDoc"](arg1, arg2, arg3);
 }
 
-export function GetRepoOverview(arg1) {
-  return window['go']['main']['App']['GetRepoOverview'](arg1);
+export function GetRepoOverview(arg1, arg2) {
+  return window["go"]["main"]["App"]["GetRepoOverview"](arg1, arg2);
 }
 
 export function GetSettings() {

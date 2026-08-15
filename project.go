@@ -261,7 +261,7 @@ func (a *App) createProject(cat, ref, owner, name, description, license string, 
 
 	htmlURL := ""
 	cloneURL := ""
-	forgeToken, forgeLogin := token, login
+	auth := gitAuthFor(Account{Scheme: "github", Host: "github.com", Login: login}, token)
 	if owner != "" {
 		// Owner keys carry their account ("<scheme>@<host>/<owner>"); a bare
 		// name means the GitHub OAuth session (legacy shape).
@@ -274,12 +274,9 @@ func (a *App) createProject(cat, ref, owner, name, description, license string, 
 			if err != nil {
 				return none, fmt.Errorf("creating repository in %s: %w", owner, err)
 			}
-			// git credentials: the GitHub helper only applies to GitHub.
-			if acc.Scheme == "github" {
-				forgeToken, forgeLogin = accToken, acc.Login
-			} else {
-				forgeToken, forgeLogin = "", ""
-			}
+			// Push as the account that just created the repository, whichever
+			// forge it lives on (ADR-0015).
+			auth = gitAuthFor(acc, accToken)
 		} else {
 			if token == "" {
 				return none, fmt.Errorf("sign in with GitHub first")
@@ -316,7 +313,7 @@ func (a *App) createProject(cat, ref, owner, name, description, license string, 
 			}
 			htmlURL, cloneURL = repo.HTMLURL, repo.CloneURL
 		}
-		if err := runGit(parentDir, forgeToken, forgeLogin, "clone", cloneURL, name); err != nil {
+		if err := runGit(parentDir, auth, "clone", cloneURL, name); err != nil {
 			return none, fmt.Errorf("repo created (%s) but clone failed: %w", htmlURL, err)
 		}
 	} else {
@@ -342,14 +339,14 @@ func (a *App) createProject(cat, ref, owner, name, description, license string, 
 			{"push", "-u", "origin", "main"},
 		}
 		for _, s := range steps {
-			if err := runGit(target, forgeToken, forgeLogin, s...); err != nil {
+			if err := runGit(target, auth, s...); err != nil {
 				return none, fmt.Errorf("repo created (%s) but push failed: %w", htmlURL, err)
 			}
 		}
 	case remoteURL != "":
 		// BYOR: no forge API — git credentials come from the user's own
 		// helper (manager, SSH agent, netrc), never from the app.
-		if err := gitPublish(target, remoteURL, "", ""); err != nil {
+		if err := gitPublish(target, remoteURL, gitAuth{}); err != nil {
 			return none, fmt.Errorf("project rendered in %s but push to %s failed: %w", target, remoteURL, err)
 		}
 		htmlURL = webURLFor(remoteURL)

@@ -274,6 +274,7 @@ func forgeListRepos(acc Account, token string) ([]Repo, error) {
 			Visibility        string `json:"visibility"`
 			LastActivityAt    string `json:"last_activity_at"`
 			Archived          bool   `json:"archived"`
+			DefaultBranch     string `json:"default_branch"`
 			Namespace         struct {
 				FullPath  string `json:"full_path"`
 				AvatarURL string `json:"avatar_url"`
@@ -289,6 +290,7 @@ func forgeListRepos(acc Account, token string) ([]Repo, error) {
 				Description: p.Description, HTMLURL: p.WebURL, CloneURL: p.HTTPURL,
 				Private: p.Visibility != "public", UpdatedAt: p.LastActivityAt,
 				Archived: p.Archived, AvatarURL: p.Namespace.AvatarURL, Forge: acc.Key(),
+				DefaultBranch: p.DefaultBranch,
 			})
 		}
 	case "gitea":
@@ -302,6 +304,7 @@ func forgeListRepos(acc Account, token string) ([]Repo, error) {
 			Updated  string `json:"updated_at"`
 			Archived bool   `json:"archived"`
 			Language string `json:"language"`
+			Branch   string `json:"default_branch"`
 			Owner    struct {
 				Login     string `json:"login"`
 				AvatarURL string `json:"avatar_url"`
@@ -316,6 +319,7 @@ func forgeListRepos(acc Account, token string) ([]Repo, error) {
 				Description: r.Desc, HTMLURL: r.HTMLURL, CloneURL: r.CloneURL,
 				Private: r.Private, Language: r.Language, UpdatedAt: r.Updated,
 				Archived: r.Archived, AvatarURL: r.Owner.AvatarURL, Forge: acc.Key(),
+				DefaultBranch: r.Branch,
 			})
 		}
 	}

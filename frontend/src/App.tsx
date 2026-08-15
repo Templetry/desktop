@@ -25,6 +25,12 @@ const LICENSES = ["", "mit", "apache-2.0", "gpl-3.0", "bsd-3-clause", "mpl-2.0",
 // any git host, no forge API — the app only pushes.
 const BYOR = "::byor";
 
+// repoKey identifies a repository across forges — the same owner/name can
+// exist on GitHub and on a company GitLab. Mirrors repoKey() in repos.go.
+function repoKey(r: { forge?: string; fullName: string }) {
+    return ((r.forge ?? "") + "::" + r.fullName).toLowerCase();
+}
+
 // resolveDoc joins a relative markdown link against the current doc's folder.
 function resolveDoc(from: string, href: string) {
     const parts = from.includes("/") ? from.slice(0, from.lastIndexOf("/")).split("/") : [];
@@ -174,10 +180,10 @@ function App() {
     const [localDoc, setLocalDoc] = useState("");
     const [localDocText, setLocalDocText] = useState("");
 
-    const openCloudDoc = (fullName: string, p: string) => {
+    const openCloudDoc = (fullName: string, p: string, forge: string) => {
         setCloudDoc(p);
         setCloudDocText("Loading…");
-        GetRepoDoc(fullName, p).then((t: string) => setCloudDocText(t))
+        GetRepoDoc(fullName, p, forge ?? "").then((t: string) => setCloudDocText(t))
             .catch((e: any) => setCloudDocText(String(e)));
     };
 
@@ -185,10 +191,10 @@ function App() {
         setCloudPrev({ repo: r, data: null });
         setCloudDoc(""); setCloudDocText("");
         setTimeout(() => document.getElementById("cloudprev")?.scrollIntoView({ behavior: "smooth" }), 60);
-        GetRepoOverview(r.fullName).then((d: any) => {
+        GetRepoOverview(r.fullName, r.forge ?? "").then((d: any) => {
             setCloudPrev({ repo: r, data: d });
             const readme = (d.docs ?? []).find((p: string) => p.toLowerCase() === "readme.md");
-            if (readme) openCloudDoc(r.fullName, readme);
+            if (readme) openCloudDoc(r.fullName, readme, r.forge ?? "");
         }).catch((e: any) => { setError(String(e)); setCloudPrev(null); });
     };
 
@@ -252,7 +258,7 @@ function App() {
         if (/^https?:/i.test(href)) { OpenRepo(href); return; }
         const target = resolveDoc(cloudDoc, href);
         if (target.toLowerCase().endsWith(".md") && cloudPrev?.repo) {
-            openCloudDoc(cloudPrev.repo.fullName, target);
+            openCloudDoc(cloudPrev.repo.fullName, target, cloudPrev.repo.forge ?? "");
         }
     };
     const localLink = (href: string) => {
@@ -1047,7 +1053,7 @@ function App() {
                                         <div className="repoinfo">
                                             <strong>
                                                 {r.fullName}
-                                                {tplRepos[r.fullName.toLowerCase()] && (
+                                                {tplRepos[repoKey(r)] && (
                                                     <em className="driftchip" title="Contains a template.yml the engine can render">template</em>
                                                 )}
                                                 {localByRemote[r.fullName.toLowerCase()] && (
@@ -1074,7 +1080,7 @@ function App() {
                                             ) : (
                                                 <button disabled={busy} title="Clone into your repositories folder" onClick={() => {
                                                     setBusy(true); setError(""); setRepoMsg("");
-                                                    CloneRepo(r.cloneUrl, r.name)
+                                                    CloneRepo(r.cloneUrl, r.name, r.forge ?? "")
                                                         .then((d: string) => { setRepoMsg(`Cloned: ${d}`); loadProjects(); })
                                                         .catch((e: any) => setError(String(e)))
                                                         .finally(() => setBusy(false));
@@ -1129,7 +1135,7 @@ function App() {
                                                 <div className="ptree">
                                                     {(cloudPrev.data.docs ?? []).map((p: string) => (
                                                         <button key={p} className={`pfile ${cloudDoc === p ? "active" : ""}`}
-                                                            onClick={() => openCloudDoc(cloudPrev.repo.fullName, p)}>
+                                                            onClick={() => openCloudDoc(cloudPrev.repo.fullName, p, cloudPrev.repo.forge ?? "")}>
                                                             <span>{p}</span>
                                                         </button>
                                                     ))}
