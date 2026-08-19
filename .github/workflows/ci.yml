@@ -96,6 +96,10 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - working-directory: frontend
         run: npm ci
+      - name: Tests
+        working-directory: frontend
+        run: npm test
+
       - name: Type-check and build
         working-directory: frontend
         # `npm run build` is tsc followed by vite build: a type error fails

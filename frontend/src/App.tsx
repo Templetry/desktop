@@ -13,36 +13,12 @@ import {
 } from "../wailsjs/go/main/App";
 import { EventsOn, EventsOff } from "../wailsjs/runtime";
 import "./App.css";
+import { KINDS, matchesFilter as matches } from "./lib/taxonomy";
+import type { Taxonomy, Form, TemplateForm } from "./lib/taxonomy";
+import { Tags } from "./lib/Tags";
+import { repoKey, driftLabel, driftTitle, resolveDoc } from "./lib/project";
+import type { Drift } from "./lib/project";
 
-// The taxonomy every form declares (ADR-0017). Three axes, each a list,
-// because a form is usually more than one thing.
-type Taxonomy = { kinds?: string[]; languages?: string[]; frameworks?: string[] };
-type Form = { form: string; name: string; path: string; status: string; description?: string } & Taxonomy;
-type TemplateForm = { path: string; name?: string; description?: string } & Taxonomy;
-
-// The closed vocabulary, in the order the ADR lists it — not alphabetical,
-// so the chips read as a spectrum rather than a dictionary.
-const KINDS = [
-    "frontend", "backend", "database", "infra",
-    "multiplatform", "android", "ios", "desktop", "cli",
-] as const;
-
-function axesOf(t: Taxonomy): string[] {
-    return [...(t.kinds ?? []), ...(t.languages ?? []), ...(t.frameworks ?? [])];
-}
-
-/** The three axes as chips. Kinds are marked so the primary axis reads first. */
-function Tags({ of, className = "" }: { of: Taxonomy; className?: string }) {
-    const kinds = of.kinds ?? [];
-    const rest = [...(of.languages ?? []), ...(of.frameworks ?? [])];
-    if (!kinds.length && !rest.length) return null;
-    return (
-        <span className={`taxtags ${className}`}>
-            {kinds.map((k) => <em key={"k" + k} className="taxtag kind">{k}</em>)}
-            {rest.map((v) => <em key={"v" + v} className="taxtag">{v}</em>)}
-        </span>
-    );
-}
 type Parent = { key: string; label?: string; repo: string; ref: string; forms: Form[] };
 type Variable = { key: string; label?: string; type?: string; pattern?: string; options?: string[]; default?: string };
 type Feature = { key: string; label?: string; default?: boolean; requires?: string[]; conflicts?: string[] };
@@ -55,38 +31,6 @@ const LICENSES = ["", "mit", "apache-2.0", "gpl-3.0", "bsd-3-clause", "mpl-2.0",
 // any git host, no forge API — the app only pushes.
 const BYOR = "::byor";
 
-// repoKey identifies a repository across forges — the same owner/name can
-// exist on GitHub and on a company GitLab. Mirrors repoKey() in repos.go.
-function repoKey(r: { forge?: string; fullName: string }) {
-    return ((r.forge ?? "") + "::" + r.fullName).toLowerCase();
-}
-
-// Drift covers both anchors a project carries: its template's commit and
-// each applied piece's own (ADR-0016), so the chip has to say which moved.
-type Drift = { latest?: string; pieces?: string[] };
-
-function driftLabel(d: Drift) {
-    if (d.latest && d.pieces?.length) return "updates available";
-    if (d.latest) return "template updated";
-    return d.pieces?.length === 1 ? "piece updated" : "pieces updated";
-}
-
-function driftTitle(p: { commit?: string }, d: Drift) {
-    const parts: string[] = [];
-    if (d.latest) parts.push(`Template moved: ${(p.commit ?? "").slice(0, 7)} → ${d.latest.slice(0, 7)}`);
-    if (d.pieces?.length) parts.push(`Pieces moved: ${d.pieces.join(", ")}`);
-    return parts.join(" · ");
-}
-
-// resolveDoc joins a relative markdown link against the current doc's folder.
-function resolveDoc(from: string, href: string) {
-    const parts = from.includes("/") ? from.slice(0, from.lastIndexOf("/")).split("/") : [];
-    for (const seg of href.split("#")[0].split("/")) {
-        if (!seg || seg === ".") continue;
-        if (seg === "..") parts.pop(); else parts.push(seg);
-    }
-    return parts.join("/");
-}
 
 // Markdown renders a doc as sanitized HTML; link clicks go through onLink.
 function Markdown({ text, onLink }: { text: string; onLink: (href: string) => void }) {
@@ -160,13 +104,7 @@ function App() {
         return KINDS.filter((k) => present.has(k));
     }, [catalogs]);
 
-    const matchesFilter = (f: Form) => {
-        if (kindFilter.length && !kindFilter.some((k) => (f.kinds ?? []).includes(k))) return false;
-        const q = formFilter.trim().toLowerCase();
-        if (!q) return true;
-        return [f.form, f.name, f.description ?? "", ...axesOf(f)]
-            .join(" ").toLowerCase().includes(q);
-    };
+    const matchesFilter = (f: Form) => matches(f, kindFilter, formFilter);
 
     const filteringCatalog = kindFilter.length > 0 || formFilter.trim() !== "";
 
