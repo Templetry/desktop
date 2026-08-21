@@ -17,6 +17,7 @@ import { KINDS, matchesFilter as matches } from "./lib/taxonomy";
 import type { Taxonomy, Form, TemplateForm } from "./lib/taxonomy";
 import { Tags } from "./lib/Tags";
 import { repoKey, driftLabel, driftTitle, resolveDoc } from "./lib/project";
+import { checkMessage, engineStatus, isActionable } from "./lib/updates";
 import type { Drift } from "./lib/project";
 
 type Parent = { key: string; label?: string; repo: string; ref: string; forms: Form[] };
@@ -118,9 +119,7 @@ function App() {
         CheckUpdates().then((u: any) => {
             setUpdates(u);
             if (announce) {
-                setUpdMsg(u.appUpdate || u.engineUpdate
-                    ? "Updates available - see below."
-                    : "Everything is up to date.");
+                setUpdMsg(checkMessage(u));
             }
         }).catch((e: any) => { if (announce) setError(String(e)); });
     };
@@ -502,7 +501,7 @@ function App() {
                     <span className="tag">Project scaffolding for every platform</span>
                 </div>
                 <div className="session">
-                    {updates && (updates.appUpdate || updates.engineUpdate) && (
+                    {isActionable(updates) && (
                         <button className="updbtn" title="A new version is available"
                             onClick={() => { switchView("settings"); setTimeout(() => document.getElementById("sec-about")?.scrollIntoView({ behavior: "smooth" }), 60); }}>
                             ● Update available
@@ -884,11 +883,9 @@ function App() {
                             <p>Templetry Desktop <strong>v{versions.app ?? "dev"}</strong>
                                 {updates?.appUpdate && <> — <a onClick={() => OpenRepo(updates.appUrl)} className="upd">update {updates.appLatest} available</a></>}
                             </p>
-                            <p>Embedded engine <strong>{versions.engine ?? "?"}</strong>
-                                {updates?.engineUpdate && <> — <a onClick={() => OpenRepo(updates.engineUrl)} className="upd">engine {updates.engineLatest} released</a></>}
-                            </p>
+                            <p>Embedded engine <strong>{engineStatus(versions.engine, updates)}</strong></p>
                             {updates?.engineUpdate && (
-                                <p className="hint">The engine ships inside the app — a newer engine arrives with the next app update, it cannot be updated separately.</p>
+                                <p className="hint">The engine is compiled into this app rather than called from your PATH, so it cannot be updated on its own. Nothing to do here.</p>
                             )}
                             <div className="actions" style={{ marginTop: 14 }}>
                                 <button onClick={() => checkUpdates(true)}>Check for updates</button>
