@@ -37,8 +37,13 @@ type appConfig struct {
 	// puts it in a subfolder named after the account or organization it
 	// came from, which is what keeps a folder with fifty repositories
 	// legible; "flat" puts everything side by side.
-	CloneLayout string         `json:"cloneLayout"` // owner (default) | flat
-	Catalogs    []CatalogEntry `json:"catalogs"`
+	CloneLayout string `json:"cloneLayout"` // owner (default) | flat
+	// OAuth application ids per host, for forges Templetry cannot ship one
+	// for. A self-hosted GitLab needs an application registered on that
+	// instance; the id is public, so it lives in settings rather than the
+	// keyring and travels with an exported settings file.
+	OAuthClients map[string]string `json:"oauthClients,omitempty"`
+	Catalogs     []CatalogEntry    `json:"catalogs"`
 	// Accounts are signed-in forges other than the GitHub OAuth session.
 	// Tokens live in the OS keyring, never here — settings stay shareable.
 	Accounts []Account `json:"accounts,omitempty"`

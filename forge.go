@@ -332,8 +332,11 @@ func forgeListRepos(acc Account, token string) ([]Repo, error) {
 
 // --- Account storage -------------------------------------------------
 
+// accountToken is what every forge call and every git push asks for. It
+// goes through the credential layer, so an OAuth grant that is about to
+// expire is renewed here rather than failing somewhere less explainable.
 func accountToken(acc Account) (string, error) {
-	return keyring.Get(keyringService, acc.Key())
+	return accountCredential(acc)
 }
 
 // GetAccounts returns every signed-in forge account: the GitHub OAuth
