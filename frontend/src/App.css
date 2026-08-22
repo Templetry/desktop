@@ -236,6 +236,38 @@ aside.collapsed .collapse { margin: 0 auto 14px; }
 }
 .rail button.active { border-color: var(--brass); color: var(--brass); background: var(--ink); }
 .catalog { margin-top: 18px; }
+
+/* -- Catalog tree ------------------------------------------------------
+   Catalogs at the first level, then parents, then forms. The order comes
+   from the catalog itself; this only draws the branching. Guide lines are
+   a border on the container rather than glyphs per row, so indentation
+   stays honest when a label wraps. */
+.tree .branch {
+    display: flex; align-items: center; gap: 6px; width: 100%;
+    background: none; border: none; cursor: pointer; text-align: left;
+    padding: 4px 6px; border-radius: 5px; color: var(--linen);
+    font: inherit;
+}
+.tree .branch:hover { background: var(--ink-2); }
+.tree .branch:focus-visible { outline: 2px solid var(--brass); outline-offset: -2px; }
+.tree .branch .caret {
+    width: 12px; flex-shrink: 0; color: var(--brass);
+    font-size: 10px; line-height: 1;
+}
+.tree .branch .label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree .branch .count {
+    font-family: Consolas, monospace; font-size: 11px; font-style: normal;
+    color: var(--linen-dim); flex-shrink: 0;
+}
+.tree .branch.cat .label {
+    font-size: 12.5px; font-weight: 650; letter-spacing: 1.4px; text-transform: uppercase;
+}
+.tree .branch.parentbranch { padding-left: 16px; }
+.tree .branch.parentbranch .label { font-size: 13px; font-weight: 600; }
+.tree .branchgroup { margin-left: 6px; }
+.tree .leaves { margin-left: 22px; padding-left: 10px; border-left: 1px dashed var(--thread); }
+.tree .leaves .form { width: 100%; }
+
 .cathead {
     display: flex;
     align-items: center;

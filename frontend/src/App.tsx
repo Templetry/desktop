@@ -19,6 +19,7 @@ import { Tags } from "./lib/Tags";
 import { repoKey, driftLabel, driftTitle, resolveDoc } from "./lib/project";
 import { checkMessage, engineStatus, isActionable } from "./lib/updates";
 import { OwnerIcon, UNKNOWN_OWNER, groupByOwner } from "./lib/OwnerIcon";
+import { catKey, isExpanded, parentKey, toggle } from "./lib/tree";
 import type { Drift } from "./lib/project";
 
 type Parent = { key: string; label?: string; repo: string; ref: string; forms: Form[] };
@@ -91,6 +92,10 @@ function App() {
     // the text box AND's over everything a form declares — the same
     // semantics as `templetry list --kind … --language …`.
     const [kindFilter, setKindFilter] = useState<string[]>([]);
+    // Which branches of the catalog tree are closed. Empty means everything
+    // is open, which is the right first impression of a catalog. Distinct
+    // from the sidebar-wide collapse above, which hides the whole aside.
+    const [closedBranches, setClosedBranches] = useState<Set<string>>(new Set());
     const [formFilter, setFormFilter] = useState("");
 
     const toggleKind = (k: string) =>
@@ -637,35 +642,59 @@ function App() {
                             </div>
                         )}
                         {view === "build" && catalogs.map((c) => {
+                            // The catalog decides the order it is read in; this only
+                            // draws it. Filtering narrows what a branch holds, never
+                            // how the branches are arranged.
                             const parents = (c.parents ?? [])
                                 .map((p: Parent) => ({ p, forms: p.forms.filter(matchesFilter) }))
                                 .filter((x: any) => x.forms.length > 0);
                             if (!parents.length && filteringCatalog && !c.error) return null;
+                            const ck = catKey(c.name);
+                            const catOpen = isExpanded(closedBranches, ck, filteringCatalog);
+                            const total = parents.reduce((n: number, x: any) => n + x.forms.length, 0);
                             return (
-                                <div key={c.name} className="catalog">
-                                    <div className="cathead">
-                                        <span>{c.name}</span>
+                                <div key={c.name} className="catalog tree">
+                                    <button className={`branch cat ${catOpen ? "open" : ""}`}
+                                        aria-expanded={catOpen}
+                                        onClick={() => setClosedBranches(toggle(closedBranches, ck))}>
+                                        <span className="caret" aria-hidden="true">{catOpen ? "▾" : "▸"}</span>
+                                        <span className="label">{c.name}</span>
                                         {c.official && <em className="badge">official</em>}
-                                    </div>
-                                    {c.error && <p className="caterr">{c.error}</p>}
-                                    {parents.map(({ p, forms }: { p: Parent; forms: Form[] }) => (
-                                        <div key={c.name + p.key} className="parent">
-                                            <h2>{p.label ?? p.key}<em>{forms.length}</em></h2>
-                                            {forms.map((f) => {
-                                                const ref = `${p.key}/${f.form}`;
-                                                const active = selectedCat === c.name && selected === ref;
-                                                const ready = !f.status || f.status === "ready";
-                                                return (
-                                                    <button key={ref} className={`form ${active ? "active" : ""}`}
-                                                        disabled={!ready} onClick={() => pick(c.name, ref)} title={f.description}>
-                                                        <span>{f.form}</span>
-                                                        {!ready && <em>{f.status}</em>}
-                                                        <Tags of={f} />
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    ))}
+                                        <em className="count">{total}</em>
+                                    </button>
+                                    {c.error && catOpen && <p className="caterr">{c.error}</p>}
+                                    {catOpen && parents.map(({ p, forms }: { p: Parent; forms: Form[] }) => {
+                                        const pk = parentKey(c.name, p.key);
+                                        const pOpen = isExpanded(closedBranches, pk, filteringCatalog);
+                                        return (
+                                            <div key={c.name + p.key} className="branchgroup">
+                                                <button className={`branch parentbranch ${pOpen ? "open" : ""}`}
+                                                    aria-expanded={pOpen}
+                                                    onClick={() => setClosedBranches(toggle(closedBranches, pk))}>
+                                                    <span className="caret" aria-hidden="true">{pOpen ? "▾" : "▸"}</span>
+                                                    <span className="label">{p.label ?? p.key}</span>
+                                                    <em className="count">{forms.length}</em>
+                                                </button>
+                                                {pOpen && (
+                                                    <div className="leaves">
+                                                        {forms.map((f) => {
+                                                            const ref = `${p.key}/${f.form}`;
+                                                            const active = selectedCat === c.name && selected === ref;
+                                                            const ready = !f.status || f.status === "ready";
+                                                            return (
+                                                                <button key={ref} className={`form ${active ? "active" : ""}`}
+                                                                    disabled={!ready} onClick={() => pick(c.name, ref)} title={f.description}>
+                                                                    <span>{f.form}</span>
+                                                                    {!ready && <em>{f.status}</em>}
+                                                                    <Tags of={f} />
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             );
                         })}
