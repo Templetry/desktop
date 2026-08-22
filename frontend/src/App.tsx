@@ -20,6 +20,7 @@ import { repoKey, driftLabel, driftTitle, resolveDoc } from "./lib/project";
 import { checkMessage, engineStatus, isActionable } from "./lib/updates";
 import { OwnerIcon, UNKNOWN_OWNER, groupByOwner } from "./lib/OwnerIcon";
 import { catKey, isExpanded, parentKey, toggle } from "./lib/tree";
+import { highlight, highlightFence } from "./lib/highlight";
 import type { Drift } from "./lib/project";
 
 type Parent = { key: string; label?: string; repo: string; ref: string; forms: Form[] };
@@ -36,6 +37,22 @@ const BYOR = "::byor";
 
 
 // Markdown renders a doc as sanitized HTML; link clicks go through onLink.
+// Fenced blocks get the same treatment as a previewed file. Registered once
+// at module scope: marked.use accumulates, so calling it per render would
+// stack a new renderer on every keystroke.
+marked.use({
+    renderer: {
+        code({ text: code, lang }: any) {
+            const hl = highlightFence(code, lang ?? "");
+            const cls = lang ? ` class="language-${String(lang).split(/s+/)[0]}"` : "";
+            if (hl) return `<pre class="hljs"><code${cls}>${hl}</code></pre>`;
+            const esc = String(code).replace(/[<>&]/g, (c) =>
+                ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" } as any)[c]);
+            return `<pre><code${cls}>${esc}</code></pre>`;
+        },
+    },
+});
+
 function Markdown({ text, onLink }: { text: string; onLink: (href: string) => void }) {
     const html = useMemo(
         () => DOMPurify.sanitize(marked.parse(text, { async: false }) as string),
@@ -1500,9 +1517,12 @@ function App() {
                                                 </button>
                                             ))}
                                         </div>
-                                        <pre className="pcontent">
-                                            {previewSel ? previewContent : "Select a file to inspect its rendered content."}
-                                        </pre>
+                                        {previewSel ? (
+                                            <pre className="pcontent hljs"
+                                                dangerouslySetInnerHTML={{ __html: highlight(previewContent, previewSel) }} />
+                                        ) : (
+                                            <pre className="pcontent">Select a file to inspect its rendered content.</pre>
+                                        )}
                                     </div>
                                 </section>
                             ) : (

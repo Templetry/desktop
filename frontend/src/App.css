@@ -790,3 +790,22 @@ body.layout-stacked .previewempty { display: none; }
     font-size: 12px;
     color: #c3c1b8;
 }
+
+/* -- Syntax colours ----------------------------------------------------
+   Ink & Brass rather than a stock highlight.js theme: brass is the accent
+   everywhere else in this app, so it carries keywords here. Strings take
+   the loom green already reserved for success, comments recede to dim.
+   Spent, not sprayed — most of a file stays plain linen. */
+.hljs { background: none; color: var(--linen); }
+.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-section, .hljs-doctag,
+.hljs-name, .hljs-strong { color: var(--brass); }
+.hljs-string, .hljs-regexp, .hljs-addition, .hljs-attribute, .hljs-meta .hljs-string { color: var(--ok); }
+.hljs-comment, .hljs-quote, .hljs-deletion { color: var(--linen-dim); font-style: italic; }
+.hljs-number, .hljs-symbol, .hljs-bullet, .hljs-link { color: var(--brass-lift); }
+.hljs-title, .hljs-title.function_, .hljs-subst { color: var(--linen); font-weight: 600; }
+.hljs-title.class_, .hljs-type, .hljs-built_in, .hljs-class .hljs-title { color: var(--brass-lift); font-weight: 600; }
+.hljs-attr, .hljs-variable, .hljs-template-variable, .hljs-selector-attr,
+.hljs-selector-pseudo, .hljs-property { color: #b9c4d6; }
+.hljs-meta, .hljs-params { color: var(--linen-dim); }
+.hljs-emphasis { font-style: italic; }
+.md pre.hljs, .md pre { background: var(--ink); border: 1px solid var(--thread); border-radius: 6px; padding: 10px 12px; overflow-x: auto; }
