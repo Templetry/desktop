@@ -33,6 +33,11 @@ type appConfig struct {
 	UIDensity        string         `json:"uiDensity"` // comfortable (default) | compact
 	UIScale          string         `json:"uiScale"`   // 0.9 | 1 | 1.1 | 1.25
 	UILayout         string         `json:"uiLayout"`  // auto (default) | stacked
+	// Where a clone lands under the repositories folder. "owner" (default)
+	// puts it in a subfolder named after the account or organization it
+	// came from, which is what keeps a folder with fifty repositories
+	// legible; "flat" puts everything side by side.
+	CloneLayout      string         `json:"cloneLayout"` // owner (default) | flat
 	Catalogs         []CatalogEntry `json:"catalogs"`
 	// Accounts are signed-in forges other than the GitHub OAuth session.
 	// Tokens live in the OS keyring, never here — settings stay shareable.
@@ -70,6 +75,9 @@ func withDefaults(c appConfig) appConfig {
 	}
 	if c.UIAccent == "" {
 		c.UIAccent = "#d9a441"
+	}
+	if c.CloneLayout == "" {
+		c.CloneLayout = "owner"
 	}
 	return c
 }

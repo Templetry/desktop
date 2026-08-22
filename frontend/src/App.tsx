@@ -772,6 +772,13 @@ function App() {
                                     onChange={(e) => setSettings({ ...settings, defaultPrivate: e.target.checked })} />
                                 <span>New repositories private by default</span>
                             </label>
+                            <label className="feature">
+                                <input type="checkbox" checked={(settings.cloneLayout ?? "owner") !== "flat"}
+                                    onChange={(e) => setSettings({ ...settings, cloneLayout: e.target.checked ? "owner" : "flat" })} />
+                                <span>Group clones by owner
+                                    <em className="hint"> — a repository lands in a subfolder named after its account or organization</em>
+                                </span>
+                            </label>
                         </section>
                         <section id="sec-appearance">
                             <h3>Appearance</h3>
@@ -1189,7 +1196,7 @@ function App() {
                                             ) : (
                                                 <button disabled={busy} title="Clone into your repositories folder" onClick={() => {
                                                     setBusy(true); setError(""); setRepoMsg("");
-                                                    CloneRepo(r.cloneUrl, r.name, r.forge ?? "")
+                                                    CloneRepo(r.cloneUrl, r.fullName, r.forge ?? "")
                                                         .then((d: string) => { setRepoMsg(`Cloned: ${d}`); loadProjects(); })
                                                         .catch((e: any) => setError(String(e)))
                                                         .finally(() => setBusy(false));

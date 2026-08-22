@@ -531,10 +531,26 @@ func (a *App) OpenRepo(url string) {
 	runtime.BrowserOpenURL(a.ctx, url)
 }
 
+// cloneTarget decides where a clone lands. Under the "owner" layout the
+// repository goes into a subfolder named after the account or organization
+// it belongs to, which is the difference between a repositories folder you
+// can read and one with fifty entries in alphabetical order. It also keeps
+// two forges' "owner/name" collisions apart on disk.
+func cloneTarget(parent, fullName, layout string) (dir, sub string) {
+	owner, name := "", fullName
+	if i := strings.LastIndex(fullName, "/"); i >= 0 {
+		owner, name = fullName[:i], fullName[i+1:]
+	}
+	if layout == "flat" || owner == "" {
+		return filepath.Join(parent, name), name
+	}
+	return filepath.Join(parent, owner, name), filepath.ToSlash(filepath.Join(owner, name))
+}
+
 // CloneRepo clones a repository into the remembered parent folder and
 // returns the local path. It authenticates as the account the repository
 // came from, so a private repo on any signed-in forge clones too.
-func (a *App) CloneRepo(cloneURL, name, forge string) (string, error) {
+func (a *App) CloneRepo(cloneURL, fullName, forge string) (string, error) {
 	acc, token, err := a.repoAccount(forge)
 	if err != nil {
 		return "", err
@@ -543,11 +559,15 @@ func (a *App) CloneRepo(cloneURL, name, forge string) (string, error) {
 	if parent == "" {
 		return "", fmt.Errorf("set your default repositories folder in Settings first")
 	}
-	target := filepath.Join(parent, name)
+	target, sub := cloneTarget(parent, fullName, withDefaults(loadConfig()).CloneLayout)
 	if _, err := os.Stat(target); err == nil {
 		return "", fmt.Errorf("%s already exists", target)
 	}
-	if err := runGit(parent, gitAuthFor(acc, token), "clone", cloneURL, name); err != nil {
+	// git creates the leaf, but not the owner folder above it.
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		return "", err
+	}
+	if err := runGit(parent, gitAuthFor(acc, token), "clone", cloneURL, sub); err != nil {
 		return "", err
 	}
 	return target, nil
