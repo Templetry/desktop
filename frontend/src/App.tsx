@@ -940,7 +940,8 @@ function App() {
                                 <h3 className="folderhead">{folder || "·"}<em>{(list as any[]).length}</em></h3>
                                 <div className="repolist" style={{ marginTop: 8 }}>
                                     {(list as any[]).map((p) => (
-                                        <div key={p.dir} className="repo">
+                                        <div key={p.dir} className={`repocell ${localPrev?.proj.dir === p.dir ? "open" : ""}`}>
+                                        <div className={`repo ${localPrev?.proj.dir === p.dir ? "open" : ""}`}>
                                             <div className="repoinfo">
                                                 <strong>
                                                     {p.name}
@@ -979,113 +980,114 @@ function App() {
                                                     onClick={() => OpenFolder(p.dir)}>⌂ Folder</button>
                                             </div>
                                         </div>
+                                        {localPrev?.proj.dir === p.dir && (
+                                            <section id="localprev">
+                                                <h3>
+                                                    {localPrev.proj.rel || localPrev.proj.name}
+                                                    {localPrev.data?.branch && <em className="gitchip">{localPrev.data.branch}</em>}
+                                                </h3>
+                                                {!localPrev.data ? (
+                                                    <p className="hint">Loading overview…</p>
+                                                ) : (
+                                                    <>
+                                                        <div className="ovgrid">
+                                                            <p className="ovrow"><span>Branches</span>
+                                                                {(localPrev.data.branches ?? []).join(" · ") || "—"}
+                                                            </p>
+                                                            <p className="ovrow"><span>Remotes</span>
+                                                                {(localPrev.data.remotes ?? []).length
+                                                                    ? (localPrev.data.remotes ?? []).map((r: any) => `${r.name} → ${r.url}`).join(" · ")
+                                                                    : "none"}
+                                                            </p>
+                                                            {localPrev.data.lastCommit && (
+                                                                <p className="ovrow"><span>Last commit</span>{localPrev.data.lastCommit}</p>
+                                                            )}
+                                                            <p className="ovrow"><span>Working tree</span>
+                                                                {localPrev.data.changes < 0 ? "unknown"
+                                                                    : localPrev.data.changes === 0 ? "clean"
+                                                                    : `${localPrev.data.changes} uncommitted change${localPrev.data.changes === 1 ? "" : "s"}`}
+                                                            </p>
+                                                            {localPrev.proj.kind === "templetry" && (
+                                                                <p className="ovrow tplrow"><span>Template</span>
+                                                                    {localPrev.proj.template} · {localPrev.proj.source}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                        {pieces.length > 0 && (
+                                                            <>
+                                                                <h3 style={{ marginTop: 20 }}>Pieces</h3>
+                                                                <p className="hint">
+                                                                    Decoupled units this project can adopt — from its own template and
+                                                                    from the shared catalogs. Adopting one adds only new files and its
+                                                                    declared patches; it never overwrites your work.
+                                                                </p>
+                                                                {pieces.map((pc: any) => (
+                                                                    <div key={pc.name} className="repo" style={{ marginTop: 8 }}>
+                                                                        <div className="repoinfo">
+                                                                            <strong>
+                                                                                {pc.name}
+                                                                                {pc.applied && <em className="driftchip">applied</em>}
+                                                                                {pc.common && (
+                                                                                    <em className="gitchip" title="Lives in a shared catalog repository, not in this template — fixed once, updated everywhere">
+                                                                                        common
+                                                                                    </em>
+                                                                                )}
+                                                                            </strong>
+                                                                            <span className="desc">{pc.description}</span>
+                                                                            {!pc.applied && (pc.variables ?? []).map((v: any) => (
+                                                                                <label key={v.key} className="field" style={{ marginTop: 6 }}>
+                                                                                    <span>{v.label ?? v.key}</span>
+                                                                                    <input
+                                                                                        value={pieceVars[pc.name]?.[v.key] ?? ""}
+                                                                                        placeholder={v.default ?? ""}
+                                                                                        onChange={(e) => setPieceVars({
+                                                                                            ...pieceVars,
+                                                                                            [pc.name]: { ...(pieceVars[pc.name] ?? {}), [v.key]: e.target.value },
+                                                                                        })} />
+                                                                                </label>
+                                                                            ))}
+                                                                        </div>
+                                                                        <div className="repoactions">
+                                                                            {pc.applied
+                                                                                ? <button disabled title="Already part of this project">✓ Applied</button>
+                                                                                : <button className="primary" disabled={busy}
+                                                                                    onClick={() => adoptPiece(localPrev.proj.dir, pc.name)}>
+                                                                                    + Add piece
+                                                                                </button>}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </>
+                                                        )}
+                                                        {(localPrev.data.docs ?? []).length > 0 && (
+                                                            <div className="preview" style={{ height: 320, marginTop: 12 }}>
+                                                                <div className="ptree">
+                                                                    {(localPrev.data.docs ?? []).map((p: string) => (
+                                                                        <button key={p} className={`pfile ${localDoc === p ? "active" : ""}`}
+                                                                            onClick={() => openLocalDoc(localPrev.proj.dir, p)}>
+                                                                            <span>{p}</span>
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                                {localDoc
+                                                                    ? <Markdown text={localDocText} onLink={localLink} />
+                                                                    : <pre className="pcontent">Select a document to read it.</pre>}
+                                                            </div>
+                                                        )}
+                                                        <div className="actions">
+                                                            <button onClick={() => setLocalPrev(null)}>Dismiss</button>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </section>
+                                        )}
+                                        </div>
                                     ))}
                                 </div>
                             </div>
                         ))}
                         {!projects.length && !busy && (
                             <div className="empty">Nothing here yet — no Templetry projects or git repositories found in your repositories folder.</div>
-                        )}
-                        {localPrev && (
-                            <section id="localprev">
-                                <h3>
-                                    {localPrev.proj.rel || localPrev.proj.name}
-                                    {localPrev.data?.branch && <em className="gitchip">{localPrev.data.branch}</em>}
-                                </h3>
-                                {!localPrev.data ? (
-                                    <p className="hint">Loading overview…</p>
-                                ) : (
-                                    <>
-                                        <div className="ovgrid">
-                                            <p className="ovrow"><span>Branches</span>
-                                                {(localPrev.data.branches ?? []).join(" · ") || "—"}
-                                            </p>
-                                            <p className="ovrow"><span>Remotes</span>
-                                                {(localPrev.data.remotes ?? []).length
-                                                    ? (localPrev.data.remotes ?? []).map((r: any) => `${r.name} → ${r.url}`).join(" · ")
-                                                    : "none"}
-                                            </p>
-                                            {localPrev.data.lastCommit && (
-                                                <p className="ovrow"><span>Last commit</span>{localPrev.data.lastCommit}</p>
-                                            )}
-                                            <p className="ovrow"><span>Working tree</span>
-                                                {localPrev.data.changes < 0 ? "unknown"
-                                                    : localPrev.data.changes === 0 ? "clean"
-                                                    : `${localPrev.data.changes} uncommitted change${localPrev.data.changes === 1 ? "" : "s"}`}
-                                            </p>
-                                            {localPrev.proj.kind === "templetry" && (
-                                                <p className="ovrow tplrow"><span>Template</span>
-                                                    {localPrev.proj.template} · {localPrev.proj.source}
-                                                </p>
-                                            )}
-                                        </div>
-                                        {pieces.length > 0 && (
-                                            <>
-                                                <h3 style={{ marginTop: 20 }}>Pieces</h3>
-                                                <p className="hint">
-                                                    Decoupled units this project can adopt — from its own template and
-                                                    from the shared catalogs. Adopting one adds only new files and its
-                                                    declared patches; it never overwrites your work.
-                                                </p>
-                                                {pieces.map((pc: any) => (
-                                                    <div key={pc.name} className="repo" style={{ marginTop: 8 }}>
-                                                        <div className="repoinfo">
-                                                            <strong>
-                                                                {pc.name}
-                                                                {pc.applied && <em className="driftchip">applied</em>}
-                                                                {pc.common && (
-                                                                    <em className="gitchip" title="Lives in a shared catalog repository, not in this template — fixed once, updated everywhere">
-                                                                        common
-                                                                    </em>
-                                                                )}
-                                                            </strong>
-                                                            <span className="desc">{pc.description}</span>
-                                                            {!pc.applied && (pc.variables ?? []).map((v: any) => (
-                                                                <label key={v.key} className="field" style={{ marginTop: 6 }}>
-                                                                    <span>{v.label ?? v.key}</span>
-                                                                    <input
-                                                                        value={pieceVars[pc.name]?.[v.key] ?? ""}
-                                                                        placeholder={v.default ?? ""}
-                                                                        onChange={(e) => setPieceVars({
-                                                                            ...pieceVars,
-                                                                            [pc.name]: { ...(pieceVars[pc.name] ?? {}), [v.key]: e.target.value },
-                                                                        })} />
-                                                                </label>
-                                                            ))}
-                                                        </div>
-                                                        <div className="repoactions">
-                                                            {pc.applied
-                                                                ? <button disabled title="Already part of this project">✓ Applied</button>
-                                                                : <button className="primary" disabled={busy}
-                                                                    onClick={() => adoptPiece(localPrev.proj.dir, pc.name)}>
-                                                                    + Add piece
-                                                                </button>}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </>
-                                        )}
-                                        {(localPrev.data.docs ?? []).length > 0 && (
-                                            <div className="preview" style={{ height: 320, marginTop: 12 }}>
-                                                <div className="ptree">
-                                                    {(localPrev.data.docs ?? []).map((p: string) => (
-                                                        <button key={p} className={`pfile ${localDoc === p ? "active" : ""}`}
-                                                            onClick={() => openLocalDoc(localPrev.proj.dir, p)}>
-                                                            <span>{p}</span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                                {localDoc
-                                                    ? <Markdown text={localDocText} onLink={localLink} />
-                                                    : <pre className="pcontent">Select a document to read it.</pre>}
-                                            </div>
-                                        )}
-                                        <div className="actions">
-                                            <button onClick={() => setLocalPrev(null)}>Dismiss</button>
-                                        </div>
-                                    </>
-                                )}
-                            </section>
                         )}
                         </>
                         )}
@@ -1166,7 +1168,8 @@ function App() {
                                 .filter((r) => !ownerFilter || r.owner === ownerFilter)
                                 .filter((r) => !repoFilter || r.fullName.toLowerCase().includes(repoFilter.toLowerCase()))
                                 .map((r) => (
-                                    <div key={r.fullName} className={`repo ${r.archived ? "archived" : ""}`}>
+                                    <div key={r.fullName} className={`repocell ${cloudPrev?.repo.fullName === r.fullName ? "open" : ""}`}>
+                                    <div className={`repo ${cloudPrev?.repo.fullName === r.fullName ? "open" : ""} ${r.archived ? "archived" : ""}`}>
                                         <div className="repoinfo">
                                             <strong>
                                                 {r.fullName}
@@ -1205,84 +1208,85 @@ function App() {
                                             )}
                                         </div>
                                     </div>
+                                    {cloudPrev?.repo.fullName === r.fullName && (
+                                        <section id="cloudprev">
+                                            <h3>
+                                                {cloudPrev.repo.fullName}
+                                                {cloudPrev.data?.defaultBranch && <em className="gitchip">{cloudPrev.data.defaultBranch}</em>}
+                                            </h3>
+                                            {!cloudPrev.data ? (
+                                                <p className="hint">Loading overview…</p>
+                                            ) : (
+                                                <>
+                                                    {cloudPrev.data.description && <p className="ovdesc">{cloudPrev.data.description}</p>}
+                                                    <div className="ovgrid">
+                                                        {(cloudPrev.data.languages ?? []).length > 0 && (
+                                                            <p className="ovrow"><span>Languages</span>
+                                                                {(cloudPrev.data.languages ?? []).map((l: any) => `${l.name} ${l.pct}%`).join(" · ")}
+                                                            </p>
+                                                        )}
+                                                        <p className="ovrow"><span>Branches</span>
+                                                            {(cloudPrev.data.branches ?? []).join(" · ") || "—"}
+                                                        </p>
+                                                        {(cloudPrev.data.templateForms ?? []).length > 0 && (
+                                                            <div className="ovrow tplrow">
+                                                                <span>Template</span>
+                                                                <div className="tplforms">
+                                                                    {(cloudPrev.data.templateForms ?? []).map((f: TemplateForm) => (
+                                                                        <div key={f.path} className="tplform">
+                                                                            <strong>{f.path === "." ? "(root)" : f.path}</strong>
+                                                                            {f.name && <em className="tplname">{f.name}</em>}
+                                                                            <Tags of={f} />
+                                                                            {f.description && <span className="desc">{f.description}</span>}
+                                                                            {!f.name && (
+                                                                                <span className="desc">
+                                                                                    carries a template.yml the engine could not read
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {(cloudPrev.data.runs ?? []).length > 0 && (
+                                                        <div className="cirows">
+                                                            {(cloudPrev.data.runs ?? []).map((r: any, i: number) => (
+                                                                <button key={i} className="cirow" title="Open the run on GitHub"
+                                                                    onClick={() => OpenRepo(r.url)}>
+                                                                    <em className={ciClass(r)}>{ciGlyph(r)}</em>
+                                                                    <span>{r.name}</span>
+                                                                    <span className="meta">{r.branch} · {String(r.updatedAt).slice(0, 10)}</span>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    {(cloudPrev.data.docs ?? []).length > 0 && (
+                                                        <div className="preview" style={{ height: 320, marginTop: 12 }}>
+                                                            <div className="ptree">
+                                                                {(cloudPrev.data.docs ?? []).map((p: string) => (
+                                                                    <button key={p} className={`pfile ${cloudDoc === p ? "active" : ""}`}
+                                                                        onClick={() => openCloudDoc(cloudPrev.repo.fullName, p, cloudPrev.repo.forge ?? "")}>
+                                                                        <span>{p}</span>
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                            {cloudDoc
+                                                                ? <Markdown text={cloudDocText} onLink={cloudLink} />
+                                                                : <pre className="pcontent">Select a document to read it.</pre>}
+                                                        </div>
+                                                    )}
+                                                    <div className="actions">
+                                                        <button onClick={() => setCloudPrev(null)}>Dismiss</button>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </section>
+                                    )}
+                                    </div>
                                 ))}
                             {!repos.length && !busy && <div className="empty">No repositories loaded.</div>}
                         </div>
-                        {cloudPrev && (
-                            <section id="cloudprev">
-                                <h3>
-                                    {cloudPrev.repo.fullName}
-                                    {cloudPrev.data?.defaultBranch && <em className="gitchip">{cloudPrev.data.defaultBranch}</em>}
-                                </h3>
-                                {!cloudPrev.data ? (
-                                    <p className="hint">Loading overview…</p>
-                                ) : (
-                                    <>
-                                        {cloudPrev.data.description && <p className="ovdesc">{cloudPrev.data.description}</p>}
-                                        <div className="ovgrid">
-                                            {(cloudPrev.data.languages ?? []).length > 0 && (
-                                                <p className="ovrow"><span>Languages</span>
-                                                    {(cloudPrev.data.languages ?? []).map((l: any) => `${l.name} ${l.pct}%`).join(" · ")}
-                                                </p>
-                                            )}
-                                            <p className="ovrow"><span>Branches</span>
-                                                {(cloudPrev.data.branches ?? []).join(" · ") || "—"}
-                                            </p>
-                                            {(cloudPrev.data.templateForms ?? []).length > 0 && (
-                                                <div className="ovrow tplrow">
-                                                    <span>Template</span>
-                                                    <div className="tplforms">
-                                                        {(cloudPrev.data.templateForms ?? []).map((f: TemplateForm) => (
-                                                            <div key={f.path} className="tplform">
-                                                                <strong>{f.path === "." ? "(root)" : f.path}</strong>
-                                                                {f.name && <em className="tplname">{f.name}</em>}
-                                                                <Tags of={f} />
-                                                                {f.description && <span className="desc">{f.description}</span>}
-                                                                {!f.name && (
-                                                                    <span className="desc">
-                                                                        carries a template.yml the engine could not read
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                        {(cloudPrev.data.runs ?? []).length > 0 && (
-                                            <div className="cirows">
-                                                {(cloudPrev.data.runs ?? []).map((r: any, i: number) => (
-                                                    <button key={i} className="cirow" title="Open the run on GitHub"
-                                                        onClick={() => OpenRepo(r.url)}>
-                                                        <em className={ciClass(r)}>{ciGlyph(r)}</em>
-                                                        <span>{r.name}</span>
-                                                        <span className="meta">{r.branch} · {String(r.updatedAt).slice(0, 10)}</span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                        {(cloudPrev.data.docs ?? []).length > 0 && (
-                                            <div className="preview" style={{ height: 320, marginTop: 12 }}>
-                                                <div className="ptree">
-                                                    {(cloudPrev.data.docs ?? []).map((p: string) => (
-                                                        <button key={p} className={`pfile ${cloudDoc === p ? "active" : ""}`}
-                                                            onClick={() => openCloudDoc(cloudPrev.repo.fullName, p, cloudPrev.repo.forge ?? "")}>
-                                                            <span>{p}</span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                                {cloudDoc
-                                                    ? <Markdown text={cloudDocText} onLink={cloudLink} />
-                                                    : <pre className="pcontent">Select a document to read it.</pre>}
-                                            </div>
-                                        )}
-                                        <div className="actions">
-                                            <button onClick={() => setCloudPrev(null)}>Dismiss</button>
-                                        </div>
-                                    </>
-                                )}
-                            </section>
-                        )}
                         </>
                         )}
                     </>

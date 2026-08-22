@@ -651,6 +651,40 @@ body.layout-stacked .previewempty { display: none; }
 }
 .repo:hover { border-left-color: var(--brass); }
 .repo.archived { opacity: 0.5; }
+
+/* -- An open preview is an extension of its card, not a panel elsewhere --
+   The card loses its bottom corners and the panel picks them up, so the two
+   read as one object. Only one can be open, which the state already
+   guarantees: cloudPrev and localPrev each hold a single repository. */
+/* The cell is the grid item, so the card and its preview stay together.
+   An open one spans the whole row: a preview squeezed into a 430px column
+   is not a preview. */
+.repocell { display: flex; flex-direction: column; min-width: 0; }
+.repocell.open { grid-column: 1 / -1; }
+.repo.open {
+    border-left-color: var(--brass);
+    border-bottom-color: transparent;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    margin-bottom: 0;
+}
+#cloudprev, #localprev {
+    margin: 0 0 10px;
+    padding: 14px;
+    background: var(--ink-2);
+    border: 1px solid var(--thread);
+    border-left: 3px solid var(--brass);
+    border-top: none;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+#cloudprev > h3:first-child, #localprev > h3:first-child { margin-top: 0; }
+@media (prefers-reduced-motion: no-preference) {
+    #cloudprev, #localprev { animation: prevopen .16s ease-out; }
+    @keyframes prevopen { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+}
 .repoinfo { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .repoinfo .meta { font-size: 11.5px; color: var(--linen-dim); font-family: Consolas, monospace; }
 .repoinfo .desc { font-size: 12.5px; color: #c3c1b8; }
