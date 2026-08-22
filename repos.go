@@ -53,6 +53,9 @@ func (a *App) ListRepos() ([]Repo, error) {
 	if token == "" && len(a.GetAccounts()) == 0 {
 		return nil, fmt.Errorf("sign in first")
 	}
+	a.mu.Lock()
+	a.accountProblems = nil
+	a.mu.Unlock()
 	var out []Repo
 	for page := 1; token != "" && page <= 3; page++ {
 		url := fmt.Sprintf("https://api.github.com/user/repos?affiliation=owner,organization_member&sort=updated&per_page=100&page=%d", page)
@@ -102,15 +105,45 @@ func (a *App) ListRepos() ([]Repo, error) {
 		}
 		tok, err := accountToken(acc)
 		if err != nil {
+			a.noteAccountProblem(acc, err)
 			continue
 		}
 		more, err := forgeListRepos(acc, tok)
 		if err != nil {
-			continue // one bad account must not blank the whole list
+			// One bad account must not blank the whole list — but it must
+			// not vanish from it in silence either. An account that quietly
+			// contributes nothing looks exactly like an account with no
+			// repositories.
+			a.noteAccountProblem(acc, err)
+			continue
 		}
 		out = append(out, more...)
 	}
 	return out, nil
+}
+
+// noteAccountProblem records why an account contributed nothing, so the UI
+// can say so instead of showing a shorter list.
+func (a *App) noteAccountProblem(acc Account, err error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	msg := acc.Key() + ": " + err.Error()
+	for _, existing := range a.accountProblems {
+		if existing == msg {
+			return
+		}
+	}
+	a.accountProblems = append(a.accountProblems, msg)
+}
+
+// AccountProblems returns what went wrong with signed-in accounts during the
+// last listing, and clears the list.
+func (a *App) AccountProblems() []string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	out := a.accountProblems
+	a.accountProblems = nil
+	return out
 }
 
 // ghJSON performs an authenticated (when signed in) GitHub API GET.

@@ -807,3 +807,23 @@ body.layout-stacked .previewempty { display: none; }
 .hljs-meta, .hljs-params { color: var(--linen-dim); }
 .hljs-emphasis { font-style: italic; }
 .md pre.hljs, .md pre { background: var(--ink); border: 1px solid var(--thread); border-radius: 6px; padding: 10px 12px; overflow-x: auto; }
+
+/* -- An account that contributed nothing --------------------------------
+   Not an error: the list still works. But an account that silently adds
+   no repositories looks exactly like one with none, which is the wrong
+   thing to conclude. */
+.callout.warn { border-left: 3px solid var(--brass); }
+.acctproblem {
+    display: block; margin-top: 4px;
+    font-family: Consolas, monospace; font-size: 12px; font-style: normal;
+    color: var(--linen-dim);
+}
+.hint.nodevice { flex: 0 0 auto; align-self: center; white-space: nowrap; }
+/* A secondary action that should not look like a button competing with the
+   primary one next to it. */
+.linky {
+    background: none; border: none; padding: 0; margin: 2px 0 10px;
+    color: var(--brass); font: inherit; font-size: 13px;
+    text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.linky:hover { color: var(--brass-lift); }

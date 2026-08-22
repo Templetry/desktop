@@ -4,6 +4,8 @@ import {main} from '../models';
 import {manifest} from '../models';
 import {update} from '../models';
 
+export function AccountProblems():Promise<Array<string>>;
+
 export function AddAccount(arg1:string,arg2:string,arg3:string):Promise<main.Account>;
 
 export function AddPiece(arg1:string,arg2:string,arg3:Record<string, string>):Promise<string>;

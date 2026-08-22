@@ -7,7 +7,7 @@ import {
     ListRepos, OpenRepo, CloneRepo, GetSettings, SaveSettings, ExportSettings, ImportSettings,
     ScanProjects, OpenFolder, GetVersions, CheckUpdates, CheckDrift, CreateProjectOnRemote,
     GetAccounts, AddAccount, RemoveAccount, GetOwnerOptions, ListPieces, AddPiece,
-    StartDeviceLogin, SupportsDeviceLogin,
+    StartDeviceLogin, SupportsDeviceLogin, AccountProblems,
     ListTemplateRepos, GetRepoOverview, GetRepoDoc, GetLocalOverview, GetLocalDoc,
     PreviewUpdate, UpdateFileContent, ApplyUpdate, InstallAppUpdate,
     GetVerifyInfo, StartVerify,
@@ -134,6 +134,12 @@ function App() {
     // token. Asked of the backend rather than guessed here: it depends on
     // whether an application id exists for that host.
     const [canDeviceLogin, setCanDeviceLogin] = useState(false);
+    // Why a signed-in account contributed nothing to the last listing. An
+    // account that quietly adds no repositories looks like one with none.
+    const [acctProblems, setAcctProblems] = useState<string[]>([]);
+    // The token field is the fallback now, so it stays folded away wherever
+    // signing in without one works.
+    const [showTokenForm, setShowTokenForm] = useState(false);
     const [formFilter, setFormFilter] = useState("");
 
     const toggleKind = (k: string) =>
@@ -240,7 +246,10 @@ function App() {
 
     const loadRepos = () => {
         setBusy(true);
-        ListRepos().then((r: any[]) => setRepos(r ?? []))
+        ListRepos().then((r: any[]) => {
+            setRepos(r ?? []);
+            AccountProblems().then((p: string[]) => setAcctProblems(p ?? [])).catch(() => {});
+        })
             .catch((e: any) => setError(String(e)))
             .finally(() => setBusy(false));
         ListTemplateRepos()
@@ -814,6 +823,33 @@ function App() {
                                 </select>
                                 <input placeholder="host (gitlab.com, codeberg.org, git.mycompany.com…)" value={newAcc.host}
                                     onChange={(e) => setNewAcc({ ...newAcc, host: e.target.value })} />
+                                {canDeviceLogin ? (
+                                    <button className="primary" disabled={busy || deviceLogin?.state === "pending"}
+                                        onClick={() => {
+                                            setError(""); setSettingsMsg("");
+                                            StartDeviceLogin(newAcc.scheme, newAcc.host)
+                                                .then((d: any) => setDeviceLogin(d))
+                                                .catch((e: any) => setError(String(e)));
+                                        }}>
+                                        {deviceLogin?.state === "pending" ? "Waiting…" : "Sign in"}
+                                    </button>
+                                ) : (
+                                    <span className="hint nodevice">needs a token</span>
+                                )}
+                            </div>
+                            {canDeviceLogin && deviceLogin?.state === "pending" && (
+                                <p className="hint">
+                                    Enter the code <strong>{deviceLogin.userCode}</strong> on {deviceLogin.host} to
+                                    finish — the page is open in your browser.
+                                </p>
+                            )}
+                            {canDeviceLogin && !showTokenForm && (
+                                <button className="linky" onClick={() => setShowTokenForm(true)}>
+                                    Use a personal access token instead
+                                </button>
+                            )}
+                            <div className="catrow" style={{ display: canDeviceLogin && !showTokenForm ? "none" : undefined }}>
+                                <span className="catname">token</span>
                                 <input type="password" placeholder="personal access token" value={newAcc.token}
                                     onChange={(e) => setNewAcc({ ...newAcc, token: e.target.value })} />
                                 <button disabled={busy || !newAcc.host || !newAcc.token} onClick={() => {
@@ -828,24 +864,7 @@ function App() {
                                         .finally(() => setBusy(false));
                                 }}>Add account</button>
                             </div>
-                            {canDeviceLogin && (
-                                <div className="callout">
-                                    <span>
-                                        {deviceLogin?.state === "pending"
-                                            ? <>Enter the code <strong>{deviceLogin.userCode}</strong> on {deviceLogin.host} to finish. The page is open in your browser.</>
-                                            : <>{newAcc.host} can sign you in without a token.</>}
-                                    </span>
-                                    <button className="primary" disabled={busy || deviceLogin?.state === "pending"}
-                                        onClick={() => {
-                                            setError(""); setSettingsMsg("");
-                                            StartDeviceLogin(newAcc.scheme, newAcc.host)
-                                                .then((s: any) => setDeviceLogin(s))
-                                                .catch((e: any) => setError(String(e)));
-                                        }}>
-                                        {deviceLogin?.state === "pending" ? "Waiting…" : `Sign in with ${newAcc.scheme === "gitlab" ? "GitLab" : newAcc.scheme}`}
-                                    </button>
-                                </div>
-                            )}
+
                             <p className="hint">
                                 GitHub and gitlab.com sign in without a token, through the OAuth device flow. Everywhere
                                 else uses a personal access token with <code>api</code> (GitLab) or <code>repo</code>
@@ -1286,6 +1305,17 @@ function App() {
                         </div>
                         {repoMsg && <pre className="output">{repoMsg}</pre>}
                         {error && <pre className="error">{error}</pre>}
+                        {acctProblems.length > 0 && (
+                            <div className="callout warn">
+                                <span>
+                                    <strong>Some accounts contributed nothing to this list.</strong>
+                                    {acctProblems.map((p) => <em key={p} className="acctproblem">{p}</em>)}
+                                </span>
+                                <button onClick={() => { switchView("settings"); setSettingsSec("profile"); }}>
+                                    Accounts
+                                </button>
+                            </div>
+                        )}
                         <div className="repolist">
                             {repos
                                 .filter((r) => !ownerFilter || r.owner === ownerFilter)

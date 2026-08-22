@@ -30,7 +30,9 @@ type App struct {
 	// One forge sign-in at a time: nobody signs into two forges at once,
 	// and one status is far easier to reason about than a map by host.
 	deviceLogin DeviceLogin
-	preview     *source.FileSet
+	// Why a signed-in account contributed nothing to the last listing.
+	accountProblems []string
+	preview         *source.FileSet
 
 	upd *update.Preview
 

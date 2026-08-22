@@ -427,7 +427,13 @@ func (a *App) GetOwnerOptions() []OwnerOption {
 		} else if err != nil {
 			continue
 		}
-		owners, _ := forgeOwners(acc, token)
+		owners, err := forgeOwners(acc, token)
+		if err != nil || len(owners) == 0 {
+			// Groups could not be read. The account's own namespace is still
+			// known and still a valid destination — offering it beats the
+			// account disappearing from the list with no explanation.
+			owners = []string{acc.Login}
+		}
 		for _, o := range owners {
 			out = append(out, OwnerOption{
 				Key:   acc.Key() + "/" + o,
