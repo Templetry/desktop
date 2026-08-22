@@ -170,6 +170,13 @@ select option {
     display: block;
 }
 .avatar.sm { width: 20px; height: 20px; display: inline-block; vertical-align: middle; margin-right: 8px; }
+/* No avatar to show: an account we cannot see, or a repository with no
+   remote at all. Says so rather than leaving a hole in the row. */
+.avatar.unknown {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--surface); border: 1px dashed var(--thread);
+  color: var(--linen-dim); font-size: 11px; font-weight: 600;
+}
 .form.owner span { display: flex; align-items: center; overflow: hidden; }
 .session .who { font-size: 14px; color: var(--brass); }
 .session button.active { border-color: var(--brass); color: var(--brass); }

@@ -18,6 +18,7 @@ import type { Taxonomy, Form, TemplateForm } from "./lib/taxonomy";
 import { Tags } from "./lib/Tags";
 import { repoKey, driftLabel, driftTitle, resolveDoc } from "./lib/project";
 import { checkMessage, engineStatus, isActionable } from "./lib/updates";
+import { OwnerIcon, UNKNOWN_OWNER, groupByOwner } from "./lib/OwnerIcon";
 import type { Drift } from "./lib/project";
 
 type Parent = { key: string; label?: string; repo: string; ref: string; forms: Form[] };
@@ -558,26 +559,26 @@ function App() {
                         </div>
                         {view === "local" && (
                             <div className="parent">
-                                <h2>Projects<em>{projects.length}</em></h2>
+                                <h2>Owners<em>{projects.length}</em></h2>
                                 <button className={`form ${projFilter === "" ? "active" : ""}`}
                                     onClick={() => setProjFilter("")}>
                                     <span>All</span>
                                     <em>{projects.length}</em>
                                 </button>
-                                {[...new Set(projects.filter((p) => p.kind !== "git").map((p) => p.template))].map((t) => (
-                                    <button key={t} className={`form ${projFilter === t ? "active" : ""}`}
-                                        onClick={() => setProjFilter(t)}>
-                                        <span>{t}</span>
-                                        <em>{projects.filter((p) => p.template === t).length}</em>
+                                {groupByOwner(projects).map((g) => (
+                                    <button key={g.owner}
+                                        className={`form owner ${projFilter === g.owner ? "active" : ""}`}
+                                        title={g.owner === UNKNOWN_OWNER
+                                            ? "Repositories with no remote we can read an account from"
+                                            : g.owner}
+                                        onClick={() => setProjFilter(g.owner)}>
+                                        <span>
+                                            <OwnerIcon src={g.avatarUrl} owner={g.owner} />
+                                            {g.owner === UNKNOWN_OWNER ? "unidentified" : g.owner}
+                                        </span>
+                                        <em>{g.count}</em>
                                     </button>
                                 ))}
-                                {projects.some((p) => p.kind === "git") && (
-                                    <button className={`form ${projFilter === "::git" ? "active" : ""}`}
-                                        onClick={() => setProjFilter("::git")}>
-                                        <span>git repositories</span>
-                                        <em>{projects.filter((p) => p.kind === "git").length}</em>
-                                    </button>
-                                )}
                             </div>
                         )}
                         {view === "settings" && (
@@ -926,7 +927,7 @@ function App() {
                         </div>
                         {error && <pre className="error">{error}</pre>}
                         {Object.entries(projects
-                            .filter((p) => !projFilter || (projFilter === "::git" ? p.kind === "git" : p.template === projFilter))
+                            .filter((p) => !projFilter || (projFilter === UNKNOWN_OWNER ? !p.owner : p.owner === projFilter))
                             .reduce((g: Record<string, any[]>, p: any) => {
                                 const rel = p.rel || p.name;
                                 const folder = rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "";

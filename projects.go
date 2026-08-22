@@ -24,6 +24,9 @@ type LocalProject struct {
 	Rel       string            `json:"rel"`
 	Kind      string            `json:"kind"`
 	Remote    string            `json:"remote,omitempty"`
+	Host      string            `json:"host,omitempty"`
+	Owner     string            `json:"owner,omitempty"`
+	AvatarURL string            `json:"avatarUrl,omitempty"`
 	Branch    string            `json:"branch,omitempty"`
 	Template  string            `json:"template,omitempty"`
 	Source    string            `json:"source,omitempty"`
@@ -76,13 +79,18 @@ func scanDir(root, dir string, depth int, out *[]LocalProject) {
 			p.Rel = filepath.ToSlash(rel)
 			p.Remote = gitRemote(sub)
 			p.Branch = gitBranch(sub)
+			p.Host, p.Owner = ownerFromRemote(p.Remote)
+			p.AvatarURL = avatarFor(p.Host, p.Owner)
 			*out = append(*out, p)
 			continue
 		}
 		if _, err := os.Stat(filepath.Join(sub, ".git")); err == nil {
+			remote := gitRemote(sub)
+			host, owner := ownerFromRemote(remote)
 			*out = append(*out, LocalProject{
 				Dir: sub, Name: e.Name(), Rel: filepath.ToSlash(rel),
-				Kind: "git", Remote: gitRemote(sub), Branch: gitBranch(sub),
+				Kind: "git", Remote: remote, Branch: gitBranch(sub),
+				Host: host, Owner: owner, AvatarURL: avatarFor(host, owner),
 			})
 			continue
 		}
@@ -116,6 +124,66 @@ func readAnswers(dir string) (LocalProject, bool) {
 		Template: ans.Template.Name, Source: ans.Template.Source, Commit: ans.Template.Commit,
 		Variables: ans.Variables, Features: ans.Features, Pieces: ans.Pieces,
 	}, true
+}
+
+// ownerFromRemote pulls the host and the account out of an origin URL.
+// Both forms have to work: https://host/owner/name.git and the ssh
+// git@host:owner/name.git, which is not a URL at all.
+//
+// The owner keeps every segment above the repository — a GitLab project can
+// live several groups deep, and flattening that would merge unrelated ones.
+func ownerFromRemote(remote string) (host, owner string) {
+	r := strings.TrimSpace(remote)
+	if r == "" {
+		return "", ""
+	}
+	r = strings.TrimSuffix(r, ".git")
+
+	switch {
+	case strings.HasPrefix(r, "git@"):
+		// git@host:owner/name
+		rest := strings.TrimPrefix(r, "git@")
+		h, path, ok := strings.Cut(rest, ":")
+		if !ok {
+			return "", ""
+		}
+		host, r = h, path
+	case strings.Contains(r, "://"):
+		_, rest, _ := strings.Cut(r, "://")
+		// Drop any user@ before the host.
+		if i := strings.Index(rest, "@"); i >= 0 && i < strings.Index(rest+"/", "/") {
+			rest = rest[i+1:]
+		}
+		h, path, ok := strings.Cut(rest, "/")
+		if !ok {
+			return "", ""
+		}
+		// A port is not part of the host we build an avatar URL from.
+		host, r = h, path
+	default:
+		return "", ""
+	}
+
+	i := strings.LastIndex(r, "/")
+	if i <= 0 {
+		return host, ""
+	}
+	return host, r[:i]
+}
+
+// avatarFor guesses the account's avatar. GitHub, Gitea and Forgejo all
+// serve one at /<account>.png; where that guess is wrong the image simply
+// fails to load and the UI falls back to a placeholder, which is the honest
+// outcome for an account we cannot see.
+func avatarFor(host, owner string) string {
+	if host == "" || owner == "" {
+		return ""
+	}
+	top := owner
+	if i := strings.Index(owner, "/"); i >= 0 {
+		top = owner[:i]
+	}
+	return "https://" + host + "/" + top + ".png"
 }
 
 // gitRemote reads origin's URL straight from .git/config — no git spawn.
