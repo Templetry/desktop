@@ -22,6 +22,7 @@ import { checkMessage, engineStatus, isActionable } from "./lib/updates";
 import { OwnerIcon, UNKNOWN_OWNER, groupByOwner } from "./lib/OwnerIcon";
 import { catKey, isExpanded, parentKey, toggle } from "./lib/tree";
 import { highlight, highlightFence } from "./lib/highlight";
+import { Splitter, useSplit } from "./lib/Splitter";
 import type { Drift } from "./lib/project";
 
 type Parent = { key: string; label?: string; repo: string; ref: string; forms: Form[] };
@@ -140,6 +141,10 @@ function App() {
     // The token field is the fallback now, so it stays folded away wherever
     // signing in without one works.
     const [showTokenForm, setShowTokenForm] = useState(false);
+    // Pane widths, remembered per purpose: a rendered project's file list and
+    // a repository's document list are read at different widths.
+    const [filesWidth, setFilesWidth] = useSplit("files", 320);
+    const [docsWidth, setDocsWidth] = useSplit("docs", 260);
     const [formFilter, setFormFilter] = useState("");
 
     const toggleKind = (k: string) =>
@@ -1202,7 +1207,7 @@ function App() {
                                                             </>
                                                         )}
                                                         {(localPrev.data.docs ?? []).length > 0 && (
-                                                            <div className="preview" style={{ height: 320, marginTop: 12 }}>
+                                                            <div className="preview" style={{ height: 320, marginTop: 12, ["--tree" as any]: docsWidth + "px" }}>
                                                                 <div className="ptree">
                                                                     {(localPrev.data.docs ?? []).map((p: string) => (
                                                                         <button key={p} className={`pfile ${localDoc === p ? "active" : ""}`}
@@ -1211,6 +1216,7 @@ function App() {
                                                                         </button>
                                                                     ))}
                                                                 </div>
+                                                                <Splitter width={docsWidth} onChange={setDocsWidth} label="Resize the document list" />
                                                                 {localDoc
                                                                     ? <Markdown text={localDocText} onLink={localLink} />
                                                                     : <pre className="pcontent">Select a document to read it.</pre>}
@@ -1415,7 +1421,7 @@ function App() {
                                                         </div>
                                                     )}
                                                     {(cloudPrev.data.docs ?? []).length > 0 && (
-                                                        <div className="preview" style={{ height: 320, marginTop: 12 }}>
+                                                        <div className="preview" style={{ height: 320, marginTop: 12, ["--tree" as any]: docsWidth + "px" }}>
                                                             <div className="ptree">
                                                                 {(cloudPrev.data.docs ?? []).map((p: string) => (
                                                                     <button key={p} className={`pfile ${cloudDoc === p ? "active" : ""}`}
@@ -1424,6 +1430,7 @@ function App() {
                                                                     </button>
                                                                 ))}
                                                             </div>
+                                                            <Splitter width={docsWidth} onChange={setDocsWidth} label="Resize the document list" />
                                                             {cloudDoc
                                                                 ? <Markdown text={cloudDocText} onLink={cloudLink} />
                                                                 : <pre className="pcontent">Select a document to read it.</pre>}
@@ -1613,7 +1620,7 @@ function App() {
                             {previewEntries.length > 0 ? (
                                 <section className="previewsec">
                                     <h3>Preview — {previewEntries.length} files</h3>
-                                    <div className="preview">
+                                    <div className="preview" style={{ ["--tree" as any]: filesWidth + "px" }}>
                                         <div className="ptree">
                                             {previewEntries.map((e) => (
                                                 <button key={e.path}
@@ -1624,6 +1631,7 @@ function App() {
                                                 </button>
                                             ))}
                                         </div>
+                                        <Splitter width={filesWidth} onChange={setFilesWidth} label="Resize the file list" />
                                         {previewSel ? (
                                             <pre className="pcontent hljs"
                                                 dangerouslySetInnerHTML={{ __html: highlight(previewContent, previewSel) }} />
