@@ -29,6 +29,16 @@ type Feature = { key: string; label?: string; default?: boolean; requires?: stri
 type Preset = { key: string; label?: string; features?: Record<string, boolean> };
 type Manifest = { name: string; description?: string; variables?: Variable[]; features?: Feature[]; presets?: Preset[] } & Taxonomy;
 
+// The settings sections, in the order the sidebar lists them. The blurb is
+// the sidebar's tooltip and the header's subtitle, so the two cannot drift.
+const SETTINGS_SECTIONS: [string, string, string][] = [
+    ["profile","Profile","Who you are signed in as, on every forge"],
+    ["defaults","Defaults","What a new project and a new clone start from"],
+    ["appearance","Appearance","Theme, accent, density and scale"],
+    ["catalogs","Catalogs","Where templates are read from"],
+    ["about","About","Versions and updates"],
+];
+
 const LICENSES = ["", "mit", "apache-2.0", "gpl-3.0", "bsd-3-clause", "mpl-2.0", "unlicense"];
 
 // Sentinel owner value for "bring your own remote" (ADR-0009 / ADR-0015):
@@ -113,6 +123,9 @@ function App() {
     // is open, which is the right first impression of a catalog. Distinct
     // from the sidebar-wide collapse above, which hides the whole aside.
     const [closedBranches, setClosedBranches] = useState<Set<string>>(new Set());
+    // Settings shows one section at a time, chosen from the sidebar, so a
+    // long page of unrelated controls stops being one long page.
+    const [settingsSec, setSettingsSec] = useState("profile");
     const [formFilter, setFormFilter] = useState("");
 
     const toggleKind = (k: string) =>
@@ -526,7 +539,7 @@ function App() {
                 <div className="session">
                     {isActionable(updates) && (
                         <button className="updbtn" title="A new version is available"
-                            onClick={() => { switchView("settings"); setTimeout(() => document.getElementById("sec-about")?.scrollIntoView({ behavior: "smooth" }), 60); }}>
+                            onClick={() => { switchView("settings"); setSettingsSec("about"); }}>
                             ● Update available
                         </button>
                     )}
@@ -606,11 +619,11 @@ function App() {
                         {view === "settings" && (
                             <div className="parent">
                                 <h2>Sections</h2>
-                                {["Profile", "Defaults", "Appearance", "Catalogs", "About"].map((s) => (
-                                    <button key={s} className="form"
-                                        onClick={() => document.getElementById("sec-" + s.toLowerCase())
-                                            ?.scrollIntoView({ behavior: "smooth", block: "start" })}>
-                                        <span>{s}</span>
+                                {SETTINGS_SECTIONS.map(([key, label, blurb]) => (
+                                    <button key={key} title={blurb}
+                                        className={`form ${settingsSec === key ? "active" : ""}`}
+                                        onClick={() => setSettingsSec(key)}>
+                                        <span>{label}</span>
                                     </button>
                                 ))}
                             </div>
@@ -728,9 +741,15 @@ function App() {
             <main>
                 {view === "settings" && (
                     <>
-                        <header><h2>Profile &amp; settings</h2></header>
-                        <div className="settingsgrid">
-                        <section className="span2" id="sec-profile">
+                        <header>
+                            <h2>{SETTINGS_SECTIONS.find(([k]) => k === settingsSec)?.[1] ?? "Settings"}</h2>
+                            <span className="subtitle">
+                                {SETTINGS_SECTIONS.find(([k]) => k === settingsSec)?.[2]}
+                            </span>
+                        </header>
+                        <div className="settingspane">
+                        {settingsSec === "profile" && (
+                        <section id="sec-profile">
                             <h3>Profile</h3>
                             {auth.state === "logged_in" && <p>Signed in as <strong>@{auth.login}</strong></p>}
                             {auth.state === "pending" && (
@@ -787,6 +806,8 @@ function App() {
                                 straight to your OS keyring, never into the settings file.
                             </p>
                         </section>
+                        )}
+                        {settingsSec === "defaults" && (
                         <section id="sec-defaults">
                             <h3>Defaults</h3>
                             <div className="field">
@@ -827,6 +848,8 @@ function App() {
                                 </span>
                             </label>
                         </section>
+                        )}
+                        {settingsSec === "appearance" && (
                         <section id="sec-appearance">
                             <h3>Appearance</h3>
                             <div className="field">
@@ -876,7 +899,9 @@ function App() {
                             </div>
                             <p className="hint">Changes apply live; Save makes them permanent.</p>
                         </section>
-                        <section className="span2" id="sec-catalogs">
+                        )}
+                        {settingsSec === "catalogs" && (
+                        <section id="sec-catalogs">
                             <h3>Catalogs</h3>
                             <div className="catrow">
                                 <span className="catname">Templetry <em className="badge">official</em></span>
@@ -908,6 +933,32 @@ function App() {
                             })}>+ Add catalog</button>
                             <p className="hint">Any registry.json (schema v2) works — yours, your team's, anyone's. Save to reload the sidebar.</p>
                         </section>
+                        )}
+                        {settingsSec === "about" && (
+                        <section id="sec-about">
+                            <h3>About</h3>
+                            <p>Templetry Desktop <strong>v{versions.app ?? "dev"}</strong>
+                                {updates?.appUpdate && <> — <a onClick={() => OpenRepo(updates.appUrl)} className="upd">update {updates.appLatest} available</a></>}
+                            </p>
+                            <p>Embedded engine <strong>{engineStatus(versions.engine, updates)}</strong></p>
+                            {updates?.engineUpdate && (
+                                <p className="hint">The engine is compiled into this app rather than called from your PATH, so it cannot be updated on its own. Nothing to do here.</p>
+                            )}
+                            <div className="actions" style={{ marginTop: 14 }}>
+                                <button onClick={() => checkUpdates(true)}>Check for updates</button>
+                                {updates?.appUpdate && (
+                                    <button className="primary" disabled={busy} onClick={() => {
+                                        setBusy(true);
+                                        InstallAppUpdate()
+                                            .then((tag: string) => setUpdMsg(`Installer for ${tag} launched - the app will close now.`))
+                                            .catch((e: any) => setError(String(e)))
+                                            .finally(() => setBusy(false));
+                                    }}>Install {updates.appLatest}</button>
+                                )}
+                            </div>
+                            {updMsg && <pre className="output">{updMsg}</pre>}
+                        </section>
+                        )}
                         <div className="actions">
                             <button className="primary" onClick={() => {
                                 SaveSettings(settings).then(() => {
@@ -932,29 +983,6 @@ function App() {
                         </div>
                         {settingsMsg && <pre className="output">{settingsMsg}</pre>}
                         {error && <pre className="error">{error}</pre>}
-                        <section className="span2" id="sec-about">
-                            <h3>About</h3>
-                            <p>Templetry Desktop <strong>v{versions.app ?? "dev"}</strong>
-                                {updates?.appUpdate && <> — <a onClick={() => OpenRepo(updates.appUrl)} className="upd">update {updates.appLatest} available</a></>}
-                            </p>
-                            <p>Embedded engine <strong>{engineStatus(versions.engine, updates)}</strong></p>
-                            {updates?.engineUpdate && (
-                                <p className="hint">The engine is compiled into this app rather than called from your PATH, so it cannot be updated on its own. Nothing to do here.</p>
-                            )}
-                            <div className="actions" style={{ marginTop: 14 }}>
-                                <button onClick={() => checkUpdates(true)}>Check for updates</button>
-                                {updates?.appUpdate && (
-                                    <button className="primary" disabled={busy} onClick={() => {
-                                        setBusy(true);
-                                        InstallAppUpdate()
-                                            .then((tag: string) => setUpdMsg(`Installer for ${tag} launched - the app will close now.`))
-                                            .catch((e: any) => setError(String(e)))
-                                            .finally(() => setBusy(false));
-                                    }}>Install {updates.appLatest}</button>
-                                )}
-                            </div>
-                            {updMsg && <pre className="output">{updMsg}</pre>}
-                        </section>
                         </div>
                     </>
                 )}
