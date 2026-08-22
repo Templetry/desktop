@@ -1,0 +1,116 @@
+name: Follow engine releases
+
+# The engine is compiled into this app, so an engine release only reaches
+# anyone through a desktop build. This bumps the dependency, proves the
+# result still works, and cuts a minor.
+
+on:
+  schedule:
+    # Daily. The engine does not release often; a day of lag costs nothing
+    # and keeps this off the critical path of a release.
+    - cron: "0 8 * * *"
+  repository_dispatch:
+    types: [engine-released]
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Cut a release even if the engine has not moved.
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: follow-engine
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.plan.outputs.tag }}
+      release: ${{ steps.plan.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - id: plan
+        name: Has the engine moved, and what would this release be called?
+        run: |
+          set -euo pipefail
+
+          latest=$(curl -fsSL https://api.github.com/repos/Templetry/engine/releases/latest \
+            | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)
+          [ -n "$latest" ] || { echo "::error::could not read the engine's latest release"; exit 1; }
+
+          current=$(grep -o 'github.com/Templetry/engine v[0-9][^ ]*' go.mod | head -1 | cut -d' ' -f2)
+          echo "engine: embedded $current, published $latest"
+
+          if [ "$current" = "$latest" ] && [ "${{ inputs.force }}" != "true" ]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "nothing to do"
+            exit 0
+          fi
+
+          # The next minor of whatever this app last shipped, never of the
+          # engine: the two version lines are independent and always were.
+          last=$(git tag --list 'v*' --sort=-v:refname | head -1)
+          [ -n "$last" ] || { echo "::error::no existing tag to count from"; exit 1; }
+          major=$(echo "${last#v}" | cut -d. -f1)
+          minor=$(echo "${last#v}" | cut -d. -f2)
+          tag="v${major}.$((minor + 1)).0"
+
+          echo "last release $last, next $tag"
+          echo "release=true" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "engine=$latest" >> "$GITHUB_OUTPUT"
+
+      - name: Take the new engine
+        if: steps.plan.outputs.release == 'true'
+        env:
+          ENGINE: ${{ steps.plan.outputs.engine }}
+        run: |
+          GOFLAGS=-mod=mod go get "github.com/Templetry/engine@$ENGINE"
+          go mod tidy
+
+      # A tag is a promise that the thing builds. Proving it before the tag
+      # exists is the difference between a skipped release and a broken one.
+      - name: It still builds and its tests pass
+        if: steps.plan.outputs.release == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+          (cd frontend && npm ci && npm test && npm run build)
+          go build -tags webkit2_41 ./...
+          go test -tags webkit2_41 ./...
+
+      - name: Commit and tag
+        if: steps.plan.outputs.release == 'true'
+        env:
+          TAG: ${{ steps.plan.outputs.tag }}
+          ENGINE: ${{ steps.plan.outputs.engine }}
+        run: |
+          git config user.name "sebss"
+          git config user.email "sebssgarcia502580@gmail.com"
+          git commit -am "engine $ENGINE"
+          git tag -a "$TAG" -m "$TAG — engine $ENGINE
+
+          Cut automatically: the engine ships inside this app, so an engine
+          release only reaches anyone through a desktop build."
+          git push origin HEAD --tags
+
+  publish:
+    needs: bump
+    if: needs.bump.outputs.release == 'true'
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.bump.outputs.tag }}
