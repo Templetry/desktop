@@ -187,3 +187,24 @@ func TestRefreshCredential(t *testing.T) {
 		}
 	})
 }
+
+// The 401 that OAuth sign-in hit on its first real run: GitLab was being
+// sent PRIVATE-TOKEN, which authenticates a personal access token and
+// nothing else. Bearer authenticates both, and this function cannot tell
+// which kind of token it holds.
+func TestForgeAuthHeaders(t *testing.T) {
+	cases := []struct{ scheme, wantHeader, wantValue string }{
+		{"gitlab", "Authorization", "Bearer t"},
+		{"gitea", "Authorization", "token t"},
+		{"github", "Authorization", "Bearer t"},
+	}
+	for _, c := range cases {
+		h, v := forgeAuth(c.scheme, "t")
+		if h != c.wantHeader || v != c.wantValue {
+			t.Errorf("forgeAuth(%q) = (%q, %q), want (%q, %q)", c.scheme, h, v, c.wantHeader, c.wantValue)
+		}
+	}
+	if h, _ := forgeAuth("gitlab", "t"); h == "PRIVATE-TOKEN" {
+		t.Error("PRIVATE-TOKEN cannot authenticate an OAuth token")
+	}
+}

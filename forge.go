@@ -43,7 +43,10 @@ func forgeAPI(scheme, host string) string {
 func forgeAuth(scheme, token string) (string, string) {
 	switch scheme {
 	case "gitlab":
-		return "PRIVATE-TOKEN", token
+		// Bearer, not PRIVATE-TOKEN. GitLab accepts a personal access token
+		// either way, but an OAuth access token only as Bearer — and this
+		// function cannot tell the two apart, nor should it have to.
+		return "Authorization", "Bearer " + token
 	case "gitea":
 		return "Authorization", "token " + token
 	default:
