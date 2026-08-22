@@ -89,22 +89,20 @@ export namespace main {
 	        this.avatar = source["avatar"];
 	    }
 	}
-	export class VerifyInfo {
-	    available: boolean;
-	    image?: string;
-	    run?: string;
-	    reason?: string;
-
+	export class AppliedPiece {
+	    name: string;
+	    source?: string;
+	    commit?: string;
+	
 	    static createFrom(source: any = {}) {
-	        return new VerifyInfo(source);
+	        return new AppliedPiece(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.available = source["available"];
-	        this.image = source["image"];
-	        this.run = source["run"];
-	        this.reason = source["reason"];
+	        this.name = source["name"];
+	        this.source = source["source"];
+	        this.commit = source["commit"];
 	    }
 	}
 	export class AuthStatus {
@@ -177,6 +175,30 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.url = source["url"];
 	        this.dir = source["dir"];
+	    }
+	}
+	export class DeviceLogin {
+	    state: string;
+	    scheme?: string;
+	    host?: string;
+	    userCode?: string;
+	    verificationUri?: string;
+	    login?: string;
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeviceLogin(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.state = source["state"];
+	        this.scheme = source["scheme"];
+	        this.host = source["host"];
+	        this.userCode = source["userCode"];
+	        this.verificationUri = source["verificationUri"];
+	        this.login = source["login"];
+	        this.error = source["error"];
 	    }
 	}
 	export class Drift {
@@ -305,12 +327,16 @@ export namespace main {
 	    rel: string;
 	    kind: string;
 	    remote?: string;
+	    host?: string;
+	    owner?: string;
+	    avatarUrl?: string;
 	    branch?: string;
 	    template?: string;
 	    source?: string;
 	    commit?: string;
 	    variables?: Record<string, string>;
 	    features?: Record<string, boolean>;
+	    pieces?: AppliedPiece[];
 	
 	    static createFrom(source: any = {}) {
 	        return new LocalProject(source);
@@ -323,13 +349,35 @@ export namespace main {
 	        this.rel = source["rel"];
 	        this.kind = source["kind"];
 	        this.remote = source["remote"];
+	        this.host = source["host"];
+	        this.owner = source["owner"];
+	        this.avatarUrl = source["avatarUrl"];
 	        this.branch = source["branch"];
 	        this.template = source["template"];
 	        this.source = source["source"];
 	        this.commit = source["commit"];
 	        this.variables = source["variables"];
 	        this.features = source["features"];
+	        this.pieces = this.convertValues(source["pieces"], AppliedPiece);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	
 	export class OwnerOption {
@@ -352,6 +400,7 @@ export namespace main {
 	    name: string;
 	    description: string;
 	    applied: boolean;
+	    common?: boolean;
 	    variables?: manifest.Variable[];
 	
 	    static createFrom(source: any = {}) {
@@ -363,6 +412,7 @@ export namespace main {
 	        this.name = source["name"];
 	        this.description = source["description"];
 	        this.applied = source["applied"];
+	        this.common = source["common"];
 	        this.variables = this.convertValues(source["variables"], manifest.Variable);
 	    }
 	
@@ -413,6 +463,7 @@ export namespace main {
 	    archived: boolean;
 	    avatarUrl: string;
 	    forge?: string;
+	    defaultBranch?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Repo(source);
@@ -432,6 +483,7 @@ export namespace main {
 	        this.archived = source["archived"];
 	        this.avatarUrl = source["avatarUrl"];
 	        this.forge = source["forge"];
+	        this.defaultBranch = source["defaultBranch"];
 	    }
 	}
 	export class TemplateForm {
@@ -441,11 +493,11 @@ export namespace main {
 	    kinds?: string[];
 	    languages?: string[];
 	    frameworks?: string[];
-
+	
 	    static createFrom(source: any = {}) {
 	        return new TemplateForm(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.path = source["path"];
@@ -498,6 +550,7 @@ export namespace main {
 		    return a;
 		}
 	}
+	
 	export class UpdateInfo {
 	    appLatest: string;
 	    engineLatest: string;
@@ -518,6 +571,24 @@ export namespace main {
 	        this.engineUpdate = source["engineUpdate"];
 	        this.appUrl = source["appUrl"];
 	        this.engineUrl = source["engineUrl"];
+	    }
+	}
+	export class VerifyInfo {
+	    available: boolean;
+	    image?: string;
+	    run?: string;
+	    reason?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new VerifyInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.available = source["available"];
+	        this.image = source["image"];
+	        this.run = source["run"];
+	        this.reason = source["reason"];
 	    }
 	}
 	export class VersionInfo {
@@ -546,6 +617,8 @@ export namespace main {
 	    uiDensity: string;
 	    uiScale: string;
 	    uiLayout: string;
+	    cloneLayout: string;
+	    oauthClients?: Record<string, string>;
 	    catalogs: CatalogEntry[];
 	    accounts?: Account[];
 	
@@ -566,6 +639,8 @@ export namespace main {
 	        this.uiDensity = source["uiDensity"];
 	        this.uiScale = source["uiScale"];
 	        this.uiLayout = source["uiLayout"];
+	        this.cloneLayout = source["cloneLayout"];
+	        this.oauthClients = source["oauthClients"];
 	        this.catalogs = this.convertValues(source["catalogs"], CatalogEntry);
 	        this.accounts = this.convertValues(source["accounts"], Account);
 	    }
@@ -723,6 +798,9 @@ export namespace manifest {
 	    schema_version: number;
 	    name: string;
 	    description?: string;
+	    kinds?: string[];
+	    languages?: string[];
+	    frameworks?: string[];
 	    platform?: string;
 	    framework?: string;
 	    variables?: Variable[];
@@ -740,6 +818,9 @@ export namespace manifest {
 	        this.schema_version = source["schema_version"];
 	        this.name = source["name"];
 	        this.description = source["description"];
+	        this.kinds = source["kinds"];
+	        this.languages = source["languages"];
+	        this.frameworks = source["frameworks"];
 	        this.platform = source["platform"];
 	        this.framework = source["framework"];
 	        this.variables = this.convertValues(source["variables"], Variable);

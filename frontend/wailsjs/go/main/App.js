@@ -31,7 +31,7 @@ export function ChooseParentDir() {
 }
 
 export function CloneRepo(arg1, arg2, arg3) {
-  return window["go"]["main"]["App"]["CloneRepo"](arg1, arg2, arg3);
+  return window['go']['main']['App']['CloneRepo'](arg1, arg2, arg3);
 }
 
 export function CreateFullProject(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) {
@@ -44,6 +44,10 @@ export function CreateProject(arg1, arg2, arg3, arg4, arg5) {
 
 export function CreateProjectOnRemote(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
   return window['go']['main']['App']['CreateProjectOnRemote'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+}
+
+export function DeviceLoginStatus() {
+  return window['go']['main']['App']['DeviceLoginStatus']();
 }
 
 export function ExportSettings() {
@@ -83,11 +87,11 @@ export function GetOwners() {
 }
 
 export function GetRepoDoc(arg1, arg2, arg3) {
-  return window["go"]["main"]["App"]["GetRepoDoc"](arg1, arg2, arg3);
+  return window['go']['main']['App']['GetRepoDoc'](arg1, arg2, arg3);
 }
 
 export function GetRepoOverview(arg1, arg2) {
-  return window["go"]["main"]["App"]["GetRepoOverview"](arg1, arg2);
+  return window['go']['main']['App']['GetRepoOverview'](arg1, arg2);
 }
 
 export function GetSettings() {
@@ -96,6 +100,10 @@ export function GetSettings() {
 
 export function GetTemplate(arg1, arg2) {
   return window['go']['main']['App']['GetTemplate'](arg1, arg2);
+}
+
+export function GetVerifyInfo(arg1, arg2) {
+  return window['go']['main']['App']['GetVerifyInfo'](arg1, arg2);
 }
 
 export function GetVersions() {
@@ -166,18 +174,22 @@ export function ScanProjects() {
   return window['go']['main']['App']['ScanProjects']();
 }
 
+export function StartDeviceLogin(arg1, arg2) {
+  return window['go']['main']['App']['StartDeviceLogin'](arg1, arg2);
+}
+
 export function StartGitHubLogin() {
   return window['go']['main']['App']['StartGitHubLogin']();
 }
 
-export function UpdateFileContent(arg1) {
-  return window['go']['main']['App']['UpdateFileContent'](arg1);
-}
-
-export function GetVerifyInfo(arg1, arg2) {
-  return window['go']['main']['App']['GetVerifyInfo'](arg1, arg2);
-}
-
 export function StartVerify(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['StartVerify'](arg1, arg2, arg3, arg4);
+}
+
+export function SupportsDeviceLogin(arg1, arg2) {
+  return window['go']['main']['App']['SupportsDeviceLogin'](arg1, arg2);
+}
+
+export function UpdateFileContent(arg1) {
+  return window['go']['main']['App']['UpdateFileContent'](arg1);
 }

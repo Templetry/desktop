@@ -91,9 +91,10 @@ func (t oauthTokens) credential(now time.Time) storedCredential {
 // else's server with its own applications, which is why a host can carry its
 // own id in settings.
 //
-// Empty until the application is registered; while it is empty, gitlab.com
-// falls back to a personal access token exactly as before.
-const gitlabClientID = ""
+// The application is public and non-confidential: the device flow presents
+// this id and no secret, which is what makes it safe to ship. The token it
+// yields belongs to whoever authorizes it, never to this id.
+const gitlabClientID = "d03abd86d938ddf9d9eca771cad283ae070055748b7047855279a17a1f256f1e"
 
 // oauthClientID returns the application id to use for a host: the one shipped
 // for a forge Templetry has registered with, or the one the user configured

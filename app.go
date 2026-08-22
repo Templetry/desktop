@@ -27,7 +27,10 @@ type App struct {
 	token        string
 	auth         AuthStatus
 	authRestored bool
-	preview      *source.FileSet
+	// One forge sign-in at a time: nobody signs into two forges at once,
+	// and one status is far easier to reason about than a map by host.
+	deviceLogin DeviceLogin
+	preview     *source.FileSet
 
 	upd *update.Preview
 

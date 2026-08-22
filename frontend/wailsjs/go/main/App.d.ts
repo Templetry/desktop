@@ -26,6 +26,8 @@ export function CreateProject(arg1:string,arg2:string,arg3:string,arg4:Record<st
 
 export function CreateProjectOnRemote(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:Record<string, string>,arg7:Record<string, boolean>):Promise<main.CreatedProject>;
 
+export function DeviceLoginStatus():Promise<main.DeviceLogin>;
+
 export function ExportSettings():Promise<string>;
 
 export function GetAccounts():Promise<Array<main.Account>>;
@@ -51,6 +53,8 @@ export function GetRepoOverview(arg1:string,arg2:string):Promise<main.RepoOvervi
 export function GetSettings():Promise<main.appConfig>;
 
 export function GetTemplate(arg1:string,arg2:string):Promise<manifest.Manifest>;
+
+export function GetVerifyInfo(arg1:string,arg2:string):Promise<main.VerifyInfo>;
 
 export function GetVersions():Promise<main.VersionInfo>;
 
@@ -86,10 +90,12 @@ export function SaveSettings(arg1:main.appConfig):Promise<void>;
 
 export function ScanProjects():Promise<Array<main.LocalProject>>;
 
+export function StartDeviceLogin(arg1:string,arg2:string):Promise<main.DeviceLogin>;
+
 export function StartGitHubLogin():Promise<main.AuthStatus>;
 
+export function StartVerify(arg1:string,arg2:string,arg3:Record<string, string>,arg4:Record<string, boolean>):Promise<string>;
+
+export function SupportsDeviceLogin(arg1:string,arg2:string):Promise<boolean>;
+
 export function UpdateFileContent(arg1:string):Promise<string>;
-
-export function GetVerifyInfo(arg1:string,arg2:string):Promise<main.VerifyInfo>;
-
-export function StartVerify(arg1:string,arg2:string,arg3:{[key: string]: string},arg4:{[key: string]: boolean}):Promise<string>;

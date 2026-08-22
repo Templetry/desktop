@@ -7,6 +7,7 @@ import {
     ListRepos, OpenRepo, CloneRepo, GetSettings, SaveSettings, ExportSettings, ImportSettings,
     ScanProjects, OpenFolder, GetVersions, CheckUpdates, CheckDrift, CreateProjectOnRemote,
     GetAccounts, AddAccount, RemoveAccount, GetOwnerOptions, ListPieces, AddPiece,
+    StartDeviceLogin, SupportsDeviceLogin,
     ListTemplateRepos, GetRepoOverview, GetRepoDoc, GetLocalOverview, GetLocalDoc,
     PreviewUpdate, UpdateFileContent, ApplyUpdate, InstallAppUpdate,
     GetVerifyInfo, StartVerify,
@@ -126,6 +127,13 @@ function App() {
     // Settings shows one section at a time, chosen from the sidebar, so a
     // long page of unrelated controls stops being one long page.
     const [settingsSec, setSettingsSec] = useState("profile");
+    // A forge sign-in in progress. Only one at a time, which is what the
+    // backend tracks too.
+    const [deviceLogin, setDeviceLogin] = useState<any>(null);
+    // Whether the host in the account form can be signed into without a
+    // token. Asked of the backend rather than guessed here: it depends on
+    // whether an application id exists for that host.
+    const [canDeviceLogin, setCanDeviceLogin] = useState(false);
     const [formFilter, setFormFilter] = useState("");
 
     const toggleKind = (k: string) =>
@@ -150,6 +158,27 @@ function App() {
     const [versions, setVersions] = useState<any>({});
     const [updates, setUpdates] = useState<any>(null);
     const [updMsg, setUpdMsg] = useState("");
+
+    useEffect(() => {
+        EventsOn("device-login", (s: any) => {
+            setDeviceLogin(s);
+            if (s?.state === "done") {
+                setSettingsMsg(`Signed in as ${s.login} on ${s.host}.`);
+                loadAccounts();
+            }
+            if (s?.state === "error") setError(s.error ?? "sign-in failed");
+        });
+        return () => EventsOff("device-login");
+    }, []);
+
+    useEffect(() => {
+        if (!newAcc.host) { setCanDeviceLogin(false); return; }
+        let alive = true;
+        SupportsDeviceLogin(newAcc.scheme, newAcc.host)
+            .then((ok: boolean) => { if (alive) setCanDeviceLogin(ok); })
+            .catch(() => { if (alive) setCanDeviceLogin(false); });
+        return () => { alive = false; };
+    }, [newAcc.scheme, newAcc.host]);
 
     const checkUpdates = (announce: boolean) => {
         CheckUpdates().then((u: any) => {
@@ -799,11 +828,31 @@ function App() {
                                         .finally(() => setBusy(false));
                                 }}>Add account</button>
                             </div>
+                            {canDeviceLogin && (
+                                <div className="callout">
+                                    <span>
+                                        {deviceLogin?.state === "pending"
+                                            ? <>Enter the code <strong>{deviceLogin.userCode}</strong> on {deviceLogin.host} to finish. The page is open in your browser.</>
+                                            : <>{newAcc.host} can sign you in without a token.</>}
+                                    </span>
+                                    <button className="primary" disabled={busy || deviceLogin?.state === "pending"}
+                                        onClick={() => {
+                                            setError(""); setSettingsMsg("");
+                                            StartDeviceLogin(newAcc.scheme, newAcc.host)
+                                                .then((s: any) => setDeviceLogin(s))
+                                                .catch((e: any) => setError(String(e)));
+                                        }}>
+                                        {deviceLogin?.state === "pending" ? "Waiting…" : `Sign in with ${newAcc.scheme === "gitlab" ? "GitLab" : newAcc.scheme}`}
+                                    </button>
+                                </div>
+                            )}
                             <p className="hint">
-                                GitHub signs in from the top bar (OAuth device flow). GitLab and Gitea/Forgejo use a
-                                personal access token with <code>api</code> (GitLab) or <code>repo</code> (Gitea) scope —
-                                the only method that works on self-hosted instances without registering an app. Tokens go
-                                straight to your OS keyring, never into the settings file.
+                                GitHub and gitlab.com sign in without a token, through the OAuth device flow. Everywhere
+                                else uses a personal access token with <code>api</code> (GitLab) or <code>repo</code>
+                                (Gitea) scope: a self-hosted server needs an OAuth application registered on it, and
+                                Gitea implements no device flow at all. Your own server can still sign in without a
+                                token — put its application id in <code>oauthClients</code> in the settings file.
+                                Credentials go straight to your OS keyring, never into the settings file.
                             </p>
                         </section>
                         )}
