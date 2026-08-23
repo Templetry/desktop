@@ -865,3 +865,15 @@ body.layout-stacked .previewempty { display: none; }
     .workspace > .splitter { display: block; }
 }
 body.layout-stacked .workspace > .splitter { display: none; }
+
+/* -- Who you are signed in as ------------------------------------------
+   Every identity, not only the GitHub session. The stack overlaps so three
+   avatars cost about the width of two, and the name shown is the first —
+   the rest are in the tooltip and in Settings. */
+.whostack { display: inline-flex; align-items: center; gap: 0; }
+.whostack .avatar { margin-right: -6px; border: 1px solid var(--ink); }
+.whostack .avatar:last-of-type { margin-right: 8px; }
+.whostack .morewho {
+    margin-left: 6px; font-style: normal; font-size: 11px;
+    font-family: Consolas, monospace; color: var(--linen-dim);
+}

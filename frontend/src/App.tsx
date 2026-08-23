@@ -23,6 +23,7 @@ import { OwnerIcon, UNKNOWN_OWNER, groupByOwner } from "./lib/OwnerIcon";
 import { catKey, isExpanded, parentKey, toggle } from "./lib/tree";
 import { highlight, highlightFence } from "./lib/highlight";
 import { Splitter, useSplit } from "./lib/Splitter";
+import { sessionAction, signedInAs } from "./lib/identity";
 import type { Drift } from "./lib/project";
 
 type Parent = { key: string; label?: string; repo: string; ref: string; forms: Form[] };
@@ -590,17 +591,33 @@ function App() {
                     )}
                     <button className={view === "settings" ? "active" : ""} onClick={() => switchView("settings")}
                         title="Profile & settings">⚙ Settings</button>
+                    {(() => {
+                        // Every identity, not only the GitHub session: saying
+                        // "sign in" to someone already signed in to GitLab was
+                        // simply wrong.
+                        const who = signedInAs(auth, accounts);
+                        return who.length > 0 && (
+                            <span className="whostack" title={who.map((x) => "@" + x.login + " on " + x.where).join(" · ")}>
+                                {who.slice(0, 3).map((i) => (
+                                    <OwnerIcon key={i.where + i.login} src={i.avatar} owner={i.login} />
+                                ))}
+                                <span className="who">@{who[0].login}</span>
+                                {who.length > 1 && <em className="morewho">+{who.length - 1}</em>}
+                            </span>
+                        );
+                    })()}
                     {auth.state === "logged_in" && (
-                        <>
-                            {auth.avatar && <img className="avatar" src={auth.avatar} alt="" />}
-                            <span className="who">@{auth.login}</span>
-                            <button onClick={() => Logout().then(() => setAuth({ state: "logged_out" }))}>Sign out</button>
-                        </>
+                        <button onClick={() => Logout().then(() => setAuth({ state: "logged_out" }))}>Sign out</button>
                     )}
                     {auth.state === "pending" && (
                         <span className="pendingchip">Code: <strong>{auth.userCode}</strong></span>
                     )}
-                    {(auth.state === "logged_out" || auth.state === "error") && (
+                    {sessionAction(auth, accounts) === "accounts" && (
+                        <button onClick={() => { switchView("settings"); setSettingsSec("profile"); }}>
+                            Accounts
+                        </button>
+                    )}
+                    {sessionAction(auth, accounts) === "sign-in" && auth.state !== "pending" && (
                         <button className="primary" onClick={login}>
                             Sign in with GitHub
                         </button>
