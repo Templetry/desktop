@@ -145,6 +145,8 @@ function App() {
     // a repository's document list are read at different widths.
     const [filesWidth, setFilesWidth] = useSplit("files", 320);
     const [docsWidth, setDocsWidth] = useSplit("docs", 260);
+    const [asideWidth, setAsideWidth] = useSplit("sidebar", 280);
+    const [formWidth, setFormWidth] = useSplit("buildform", 620);
     const [formFilter, setFormFilter] = useState("");
 
     const toggleKind = (k: string) =>
@@ -606,7 +608,8 @@ function App() {
                 </div>
             </header>
             <div id="app">
-            <aside className={collapsed ? "collapsed" : ""}>
+            <aside className={collapsed ? "collapsed" : ""}
+                style={collapsed ? undefined : { width: asideWidth }}>
                 <button className="collapse" onClick={toggleSidebar}
                     title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
                     {collapsed ? "»" : "«"}
@@ -780,6 +783,9 @@ function App() {
                     </>
                 )}
             </aside>
+            {/* Hidden while collapsed: there is nothing to size, and the
+                handle would sit against a rail the user just folded away. */}
+            {!collapsed && <Splitter width={asideWidth} onChange={setAsideWidth} label="Resize the sidebar" />}
 
             <main>
                 {view === "settings" && (
@@ -1249,7 +1255,7 @@ function App() {
                                     <p className="hint">The template moved, but this project's output is identical — nothing to apply.</p>
                                 ) : (
                                     <>
-                                        <div className="preview" style={{ height: 380 }}>
+                                        <div className="preview" style={{ height: 380, ["--tree" as any]: filesWidth + "px" }}>
                                             <div className="ptree">
                                                 {(updPrev.entries ?? []).map((e: any) => (
                                                     <button key={e.path}
@@ -1264,9 +1270,13 @@ function App() {
                                                     </button>
                                                 ))}
                                             </div>
-                                            <pre className="pcontent">
-                                                {updSel ? updContent : "Select a file to inspect its updated content."}
-                                            </pre>
+                                            <Splitter width={filesWidth} onChange={setFilesWidth} label="Resize the changed-file list" />
+                                            {updSel ? (
+                                                <pre className="pcontent hljs"
+                                                    dangerouslySetInnerHTML={{ __html: highlight(updContent, updSel) }} />
+                                            ) : (
+                                                <pre className="pcontent">Select a file to inspect its updated content.</pre>
+                                            )}
                                         </div>
                                         <div className="actions">
                                             <button className="primary" disabled={busy} onClick={applyUpdate}>
@@ -1459,7 +1469,7 @@ function App() {
                             {manifest.description && <p>{manifest.description}</p>}
                             <Tags of={manifest} className="header" />
                         </header>
-                        <div className="workspace">
+                        <div className="workspace" style={{ ["--form" as any]: formWidth + "px" }}>
                         <div className="formcol">
 
                         {(manifest.variables ?? []).length > 0 && (
@@ -1616,6 +1626,9 @@ function App() {
                             </pre>
                         )}
                         </div>
+                        {/* Side by side only above 1100px; stacked below, where a
+                            vertical handle would divide nothing. CSS hides it. */}
+                        <Splitter width={formWidth} onChange={setFormWidth} label="Resize the form column" />
                         <div className="sidecol">
                             {previewEntries.length > 0 ? (
                                 <section className="previewsec">
