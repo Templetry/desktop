@@ -14,10 +14,11 @@ import {
 } from "../wailsjs/go/main/App";
 import { EventsOn, EventsOff } from "../wailsjs/runtime";
 import "./App.css";
-import { KINDS, matchesFilter as matches } from "./lib/taxonomy";
+import { KINDS, matchesFilter as matches, summaryOf } from "./lib/taxonomy";
 import type { Taxonomy, Form, TemplateForm } from "./lib/taxonomy";
 import { Tags } from "./lib/Tags";
-import { repoKey, driftLabel, driftTitle, resolveDoc } from "./lib/project";
+import { repoKey, driftLabel, driftTitle, resolveDoc, shortRemote, patternProblem } from "./lib/project";
+import logo from "./assets/images/logo.svg";
 import { checkMessage, engineStatus, isActionable } from "./lib/updates";
 import { OwnerIcon, UNKNOWN_OWNER, groupByOwner } from "./lib/OwnerIcon";
 import { catKey, isExpanded, parentKey, toggle } from "./lib/tree";
@@ -578,6 +579,7 @@ function App() {
         <div id="shell">
             <header className="topbar">
                 <div className="brand">
+                    <img className="mark" src={logo} alt="" />
                     <h1>Templetry</h1>
                     <span className="ver">v{versions.app ?? "dev"}</span>
                     <span className="tag">Project scaffolding for every platform</span>
@@ -774,12 +776,16 @@ function App() {
                                                             const ref = `${p.key}/${f.form}`;
                                                             const active = selectedCat === c.name && selected === ref;
                                                             const ready = !f.status || f.status === "ready";
+                                                            const summary = summaryOf(f.description);
+                                                            // Siblings share most of their chips — every kmp form is
+                                                            // multiplatform — so a row carries what tells it apart: its
+                                                            // name and what it is. The chips live in the header.
                                                             return (
-                                                                <button key={ref} className={`form ${active ? "active" : ""}`}
+                                                                <button key={ref} className={`form leaf ${active ? "active" : ""}`}
                                                                     disabled={!ready} onClick={() => pick(c.name, ref)} title={f.description}>
-                                                                    <span>{f.form}</span>
+                                                                    <span className="fname">{f.form}</span>
                                                                     {!ready && <em>{f.status}</em>}
-                                                                    <Tags of={f} />
+                                                                    {summary && <small className="fsum">{summary}</small>}
                                                                 </button>
                                                             );
                                                         })}
@@ -1107,7 +1113,7 @@ function App() {
                             .sort(([a], [b]) => a.localeCompare(b))
                             .map(([folder, list]) => (
                             <div key={folder || "(root)"}>
-                                <h3 className="folderhead">{folder || "·"}<em>{(list as any[]).length}</em></h3>
+                                <h3 className="folderhead">{folder || "top level"}<em>{(list as any[]).length}</em></h3>
                                 <div className="repolist" style={{ marginTop: 8 }}>
                                     {(list as any[]).map((p) => (
                                         <div key={p.dir} className={`repocell ${localPrev?.proj.dir === p.dir ? "open" : ""}`}>
@@ -1124,7 +1130,7 @@ function App() {
                                                 </strong>
                                                 <span className="meta">
                                                     {p.kind === "git"
-                                                        ? [p.branch, p.remote || "local repository — no remote"].filter(Boolean).join(" · ")
+                                                        ? [p.branch, p.remote ? shortRemote(p.remote) : "local repository — no remote"].filter(Boolean).join(" · ")
                                                         : `${p.template} · ${p.source}`}
                                                 </span>
                                                 {p.kind !== "git" && (
@@ -1372,7 +1378,7 @@ function App() {
                                                 {r.archived ? " · archived" : ""}
                                                 {` · ${String(r.updatedAt).slice(0, 10)}`}
                                             </span>
-                                            {r.description && <span className="desc">{r.description}</span>}
+                                            {r.description && <span className="desc" title={r.description}>{r.description}</span>}
                                         </div>
                                         <div className="repoactions">
                                             <button title="Repo state: branches, CI, docs"
@@ -1478,7 +1484,13 @@ function App() {
                         )}
                     </>
                 )}
-                {view === "build" && !selected && <div className="empty">Pick a template form to start.</div>}
+                {view === "build" && !selected && (
+                    <div className="empty welcome">
+                        <img className="mark" src={logo} alt="" />
+                        <p><strong>Pick a template form to start.</strong></p>
+                        <p>Every form in the catalog renders and compiles in CI before it reaches this list.</p>
+                    </div>
+                )}
                 {view === "build" && selected && manifest && (
                     <>
                         <header>
@@ -1492,8 +1504,13 @@ function App() {
                         {(manifest.variables ?? []).length > 0 && (
                             <section>
                                 <h3>Template</h3>
-                                {(manifest.variables ?? []).map((v) => (
-                                    <label key={v.key} className="field">
+                                {(manifest.variables ?? []).map((v) => {
+                                    // The pattern is a rule, not an example: it checks what
+                                    // is typed instead of standing in the field as a hint.
+                                    const problem = v.type === "select" ? "" : patternProblem(vars[v.key] ?? "", v.pattern);
+                                    return (
+                                    <div key={v.key}>
+                                    <label className="field">
                                         <span>{v.label ?? v.key}</span>
                                         {v.type === "select" ? (
                                             <select value={vars[v.key] ?? ""}
@@ -1501,11 +1518,17 @@ function App() {
                                                 {(v.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
                                             </select>
                                         ) : (
-                                            <input value={vars[v.key] ?? ""} placeholder={v.pattern ?? ""}
+                                            <input value={vars[v.key] ?? ""} placeholder={v.default ?? ""}
+                                                className={problem ? "invalid" : ""}
+                                                title={v.pattern ? `Pattern: ${v.pattern}` : undefined}
+                                                aria-invalid={problem !== ""}
                                                 onChange={(e) => setVars({ ...vars, [v.key]: e.target.value })} />
                                         )}
                                     </label>
-                                ))}
+                                    {problem && <p className="fieldhint">{problem}</p>}
+                                    </div>
+                                    );
+                                })}
                                 {(manifest.presets ?? []).length > 0 && (
                                     <div className="field">
                                         <span>Preset</span>
@@ -1671,7 +1694,10 @@ function App() {
                                     </div>
                                 </section>
                             ) : (
-                                <div className="previewempty">Preview shows the rendered project here.</div>
+                                <div className="previewempty">
+                                    <p>See every file before anything is written to disk.</p>
+                                    <button disabled={busy || featureConflict} onClick={preview}>Preview</button>
+                                </div>
                             )}
                         </div>
                         </div>

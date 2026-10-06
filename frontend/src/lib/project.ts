@@ -30,3 +30,24 @@ export function resolveDoc(from: string, href: string): string {
     }
     return parts.join("/");
 }
+
+// shortRemote is how a card names a remote: the host's own path, without the
+// scheme or the .git suffix that make every GitHub URL start and end alike.
+// The host stays unless it is github.com, where nearly every remote lives.
+export function shortRemote(url: string): string {
+    const u = url.trim().replace(/\.git$/, "").replace(/\/$/, "");
+    const m = u.match(/^(?:[a-z+]+:\/\/)?(?:[^@/]+@)?([^/:]+)[/:](.+)$/i);
+    if (!m) return u;
+    const [, host, path] = m;
+    return host.toLowerCase() === "github.com" ? path : `${host}/${path}`;
+}
+
+// patternProblem says why a value fails a manifest variable's pattern, or ""
+// when it passes, is empty, or the pattern itself cannot be compiled — a
+// broken pattern in a manifest is the engine's to report, not the form's.
+export function patternProblem(value: string, pattern?: string): string {
+    if (!value || !pattern) return "";
+    let re: RegExp;
+    try { re = new RegExp(pattern); } catch { return ""; }
+    return re.test(value) ? "" : `Must match ${pattern}`;
+}

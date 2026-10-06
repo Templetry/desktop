@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { KINDS, axesOf, matchesFilter, type Form } from "./taxonomy";
+import { KINDS, axesOf, matchesFilter, summaryOf, type Form } from "./taxonomy";
 
 const form = (over: Partial<Form> = {}): Form => ({
     form: "react-spa", name: "web-react-spa", path: "react-spa", status: "ready",
@@ -73,5 +73,25 @@ describe("matchesFilter", () => {
 
     it("survives a form with no description", () => {
         expect(matchesFilter(form({ description: undefined }), [], "react")).toBe(true);
+    });
+});
+
+describe("summaryOf", () => {
+    it("keeps the clause before the dash", () => {
+        expect(summaryOf("HTTP service — axum + tokio, handler tests")).toBe("HTTP service");
+    });
+
+    it("keeps the whole text when there is no dash", () => {
+        expect(summaryOf("React single-page app")).toBe("React single-page app");
+    });
+
+    // A hyphen inside a name is not the separator: only the spaced em dash is.
+    it("does not split on a hyphen", () => {
+        expect(summaryOf("Single-module starter")).toBe("Single-module starter");
+    });
+
+    it("is empty for a form with no description", () => {
+        expect(summaryOf(undefined)).toBe("");
+        expect(summaryOf("  ")).toBe("");
     });
 });

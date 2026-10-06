@@ -28,3 +28,14 @@ export function matchesFilter(f: Form, kinds: readonly string[], query: string):
     return [f.form, f.name, f.description ?? "", ...axesOf(f)]
         .join(" ").toLowerCase().includes(q);
 }
+
+/**
+ * summaryOf is the part of a form's description a sidebar row has room for.
+ * Catalog descriptions read "what it is — the details", so the clause before
+ * the dash names the form and the rest is for the header and the tooltip.
+ */
+export function summaryOf(description?: string): string {
+    const d = (description ?? "").trim();
+    const cut = d.indexOf(" — ");
+    return cut > 0 ? d.slice(0, cut).trim() : d;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { driftLabel, driftTitle, repoKey, resolveDoc } from "./project";
+import { driftLabel, driftTitle, patternProblem, repoKey, resolveDoc, shortRemote } from "./project";
 
 describe("repoKey", () => {
     // The bug this prevents: the same owner/name on two forges collapsing
@@ -80,5 +80,47 @@ describe("resolveDoc", () => {
     it("ignores . and empty segments", () => {
         expect(resolveDoc("guide/a.md", "./b.md")).toBe("guide/b.md");
         expect(resolveDoc("guide/a.md", "sub//b.md")).toBe("guide/sub/b.md");
+    });
+});
+
+describe("shortRemote", () => {
+    it("drops the scheme, github.com and .git", () => {
+        expect(shortRemote("https://github.com/Sebas1705/winforge.git")).toBe("Sebas1705/winforge");
+    });
+
+    // Another host is the information: two remotes can share owner/name.
+    it("keeps any other host", () => {
+        expect(shortRemote("https://gitlab.com/me/app.git")).toBe("gitlab.com/me/app");
+    });
+
+    it("reads scp-style SSH remotes", () => {
+        expect(shortRemote("git@github.com:Templetry/engine.git")).toBe("Templetry/engine");
+        expect(shortRemote("git@git.example.com:team/svc")).toBe("git.example.com/team/svc");
+    });
+
+    it("leaves what it cannot parse alone", () => {
+        expect(shortRemote("C:\repos\bare")).toBe("C:\repos\bare");
+    });
+});
+
+describe("patternProblem", () => {
+    const pkg = "^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$";
+
+    it("passes a matching value", () => {
+        expect(patternProblem("es.sebas1705", pkg)).toBe("");
+    });
+
+    it("names the pattern a value fails", () => {
+        expect(patternProblem("Es.Sebas", pkg)).toBe(`Must match ${pkg}`);
+    });
+
+    // An empty field is unfinished, not wrong: no red before anything is typed.
+    it("says nothing about an empty value or a missing pattern", () => {
+        expect(patternProblem("", pkg)).toBe("");
+        expect(patternProblem("anything", undefined)).toBe("");
+    });
+
+    it("does not blame the user for a pattern that does not compile", () => {
+        expect(patternProblem("x", "([")).toBe("");
     });
 });

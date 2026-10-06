@@ -11,6 +11,10 @@
     --brass-lift: color-mix(in srgb, var(--brass) 85%, white);
     --ok: #a4d9a9;
     --bad: #ff9090;
+    /* Body text a step below linen, and the faintest text still meant to be read. */
+    --linen-soft: #c3c1b8;
+    --linen-faint: #5b5f6e;
+    --code-attr: #b9c4d6;
 }
 
 * { box-sizing: border-box; margin: 0; }
@@ -50,7 +54,9 @@ select option {
     background: var(--ink-2);
     border-bottom: 2px solid var(--brass);
 }
-.brand { display: flex; align-items: baseline; gap: 12px; }
+.brand { display: flex; align-items: center; gap: 12px; }
+/* The mark is drawn as given — never recoloured, never given an effect. */
+.brand .mark { width: 30px; height: 30px; display: block; flex-shrink: 0; }
 .brand h1 {
     font-size: 20px;
     font-weight: 650;
@@ -128,7 +134,7 @@ select option {
 
 /* -- Repo overview panels (Cloud & Local) ------------- */
 #cloudprev h3 em, #localprev h3 em { margin-left: 10px; }
-.ovdesc { margin-top: 10px; font-size: 13.5px; color: #c3c1b8; max-width: 720px; }
+.ovdesc { margin-top: 10px; font-size: 13.5px; color: var(--linen-soft); max-width: 720px; }
 .ovgrid { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
 .ovrow {
     font-family: Consolas, monospace;
@@ -268,6 +274,51 @@ aside.collapsed .collapse { margin: 0 auto 14px; }
 .tree .leaves { margin-left: 22px; padding-left: 10px; border-left: 1px dashed var(--thread); }
 .tree .leaves .form { width: 100%; }
 
+/* -- A form in the tree --------------------------------------------------
+   Two lines: the form's name, then what it is. The selected one is not a
+   boxed button with an arrow: a brass thread is drawn over the stitched
+   guide line beside it — the warp, the one motif the brand asks for. */
+.form.leaf {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1px;
+    padding: 6px 10px;
+    margin-bottom: 1px;
+    border: none;
+    text-align: left;
+}
+.form.leaf .fname { font-size: 13.5px; font-weight: 600; }
+.form.leaf .fname, .form.leaf .fsum { display: block; max-width: 100%; min-width: 0; }
+.form.leaf .fsum {
+    font-size: 11.5px;
+    color: var(--linen-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.form.leaf > em { position: absolute; top: 7px; right: 10px; }
+.form.leaf.active { background: var(--surface); }
+.form.leaf.active > span.fname::before { content: none; }
+.form.leaf.active .fname { color: var(--brass); }
+.form.leaf.active .fsum { color: var(--linen); }
+.form.leaf::after {
+    content: "";
+    position: absolute;
+    left: -12px;
+    top: 5px;
+    bottom: 5px;
+    width: 3px;
+    border-radius: 2px;
+    background: transparent;
+    transition: background .12s ease;
+}
+.form.leaf:hover:not(:disabled) { box-shadow: none; }
+.form.leaf:hover:not(:disabled)::after { background: var(--thread); }
+.form.leaf.active::after { background: var(--brass); }
+.form.leaf:focus-visible { outline-offset: -2px; }
+
 .cathead {
     display: flex;
     align-items: center;
@@ -296,9 +347,10 @@ aside.collapsed .collapse { margin: 0 auto 14px; }
 }
 .caterr { font-size: 11.5px; color: var(--bad); padding: 6px 8px; }
 .catrow { display: flex; gap: 8px; margin-bottom: 8px; max-width: 900px; align-items: center; }
-.catrow input { flex: 1; padding: 8px 11px; background: var(--ink-2); border: 1px solid var(--thread); border-radius: 6px; color: var(--linen); font-size: 14px; }
+.catrow input, .catrow select { flex: 1; padding: 8px 11px; background: var(--ink-2); border: 1px solid var(--thread); border-radius: 6px; color: var(--linen); font-size: 14px; }
 .catrow .catnameinput { flex: 0 0 180px; }
-.catname { flex: 0 0 180px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.catname { flex: 0 0 auto; min-width: 180px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.catname .gitchip { white-space: nowrap; margin-left: 2px; }
 
 .parent h2 em {
     float: right;
@@ -342,8 +394,8 @@ aside.collapsed .collapse { margin: 0 auto 14px; }
    button — the taxonomy chips live in one too, and it grew a second arrow
    on its own row. */
 .form.active > span:not(.taxtags)::before { content: "\25B8  "; color: var(--brass); }
-.form:disabled { color: #5b5f6e; cursor: default; }
-.form em { font-size: 11px; color: #5b5f6e; font-style: normal; }
+.form:disabled { color: var(--linen-faint); cursor: default; }
+.form em { font-size: 11px; color: var(--linen-faint); font-style: normal; }
 
 /* -- Main -------------------------------------------- */
 main { flex: 1; padding: 30px 36px; overflow-y: auto; }
@@ -372,7 +424,7 @@ main h3 {
     color: var(--linen);
     font-size: 14px;
 }
-.field input::placeholder, .outrow input::placeholder { color: #5b5f6e; }
+.field input::placeholder, .outrow input::placeholder { color: var(--linen-faint); }
 input:focus, select:focus, button:focus-visible {
     outline: 2px solid var(--brass);
     outline-offset: 1px;
@@ -419,6 +471,9 @@ button.primary:hover:not(:disabled) { background: var(--brass-lift); }
     --linen-dim: #676a78;
     --ok: #2c6b36;
     --bad: #a83232;
+    --linen-soft: #3a3d48;
+    --linen-faint: #8c8778;
+    --code-attr: #3a5a8c;
 }
 
 :root[data-density="compact"] main { padding: 18px 24px; }
@@ -486,10 +541,46 @@ button.primary:hover:not(:disabled) { background: var(--brass-lift); }
     white-space: pre-wrap;
     word-break: break-all;
 }
-.error { color: var(--bad); border: 1px solid #5a2e2e; }
-.output { color: var(--ok); border: 1px solid #31463a; }
+.error { color: var(--bad); border: 1px solid color-mix(in srgb, var(--bad) 35%, transparent); }
+.output { color: var(--ok); border: 1px solid color-mix(in srgb, var(--ok) 30%, transparent); }
 
-.empty { color: #5b5f6e; margin-top: 40vh; text-align: center; }
+.empty { color: var(--linen-faint); margin-top: 40vh; text-align: center; }
+/* Nothing chosen yet: an invitation to act, not a blank page. The warp sits
+   behind it at the strength the brand gives it behind the wordmark. */
+.empty.welcome {
+    margin: 18vh auto 0;
+    max-width: 440px;
+    padding: 36px 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    border: 1px dashed var(--thread);
+    border-radius: 12px;
+    background: repeating-linear-gradient(
+        90deg,
+        transparent 0 13px,
+        rgba(217, 164, 65, 0.06) 13px 14px
+    );
+    color: var(--linen-dim);
+    font-size: 13px;
+    line-height: 1.5;
+}
+.empty.welcome .mark { width: 56px; height: 56px; margin-bottom: 8px; }
+.empty.welcome strong { color: var(--linen); font-size: 15px; font-weight: 650; }
+
+/* A value the manifest's pattern rejects: said where it is typed, and the
+   pattern itself is in the tooltip rather than in the field as a fake example. */
+.field input.invalid { border-color: var(--bad); }
+.field input.invalid:focus { outline-color: var(--bad); }
+.fieldhint {
+    margin: -4px 0 10px 172px;
+    max-width: 468px;
+    font-family: Consolas, monospace;
+    font-size: 11.5px;
+    color: var(--bad);
+    word-break: break-all;
+}
 
 /* -- Auth -------------------------------------------- */
 .authbox {
@@ -540,12 +631,17 @@ header .subtitle {
 .sidecol { min-width: 0; }
 .previewempty {
     display: none;
-    color: #5b5f6e;
+    color: var(--linen-dim);
     border: 1px dashed var(--thread);
     border-radius: 8px;
     padding: 40px 20px;
     text-align: center;
     font-size: 13px;
+    background: repeating-linear-gradient(
+        90deg,
+        transparent 0 13px,
+        rgba(217, 164, 65, 0.05) 13px 14px
+    );
 }
 
 @media (min-width: 1100px) {
@@ -553,7 +649,11 @@ header .subtitle {
     .formcol { width: var(--form, 620px); flex-shrink: 0; }
     .sidecol { flex: 1; position: sticky; top: 0; }
     .sidecol .previewsec { margin-top: 24px; }
-    .previewempty { display: flex; align-items: center; justify-content: center; margin-top: 24px; min-height: 300px; }
+    .previewempty {
+        display: flex; flex-direction: column; gap: 14px;
+        align-items: center; justify-content: center;
+        margin-top: 24px; min-height: 300px;
+    }
 }
 
 /* -- Preview ----------------------------------------- */
@@ -656,7 +756,7 @@ body.layout-stacked .previewempty { display: none; }
 .md h2 { font-size: 15.5px; }
 .md h3 { font-size: 14px; }
 .md h4 { font-size: 13px; }
-.md p { margin: 8px 0; color: #c3c1b8; }
+.md p { margin: 8px 0; color: var(--linen-soft); }
 .md a { color: var(--brass); text-decoration: underline; cursor: pointer; }
 .md code {
     font-family: Consolas, monospace;
@@ -675,7 +775,7 @@ body.layout-stacked .previewempty { display: none; }
     margin: 10px 0;
 }
 .md pre code { border: 0; padding: 0; background: none; }
-.md ul, .md ol { margin: 8px 0 8px 22px; color: #c3c1b8; }
+.md ul, .md ol { margin: 8px 0 8px 22px; color: var(--linen-soft); }
 .md li { margin: 3px 0; }
 .md blockquote {
     border-left: 3px solid var(--brass-deep);
@@ -684,7 +784,7 @@ body.layout-stacked .previewempty { display: none; }
     color: var(--linen-dim);
 }
 .md table { border-collapse: collapse; margin: 10px 0; font-size: 12.5px; }
-.md th, .md td { border: 1px solid var(--thread); padding: 5px 10px; text-align: left; color: #c3c1b8; }
+.md th, .md td { border: 1px solid var(--thread); padding: 5px 10px; text-align: left; color: var(--linen-soft); }
 .md th { color: var(--brass); }
 .md img { max-width: 100%; }
 .md hr { border: 0; border-top: 1px dashed var(--thread); margin: 14px 0; }
@@ -720,6 +820,10 @@ body.layout-stacked .previewempty { display: none; }
    An open one spans the whole row: a preview squeezed into a 430px column
    is not a preview. */
 .repocell { display: flex; flex-direction: column; min-width: 0; }
+/* The grid stretches the cell to its row; the card has to follow, or a short
+   card sits beside a tall one with a gap under it. Content starts at the top
+   so names line up across the row instead of floating to each card's middle. */
+.repocell > .repo { flex: 1; align-items: flex-start; }
 .repocell.open { grid-column: 1 / -1; }
 .repo.open {
     border-left-color: var(--brass);
@@ -745,10 +849,33 @@ body.layout-stacked .previewempty { display: none; }
     #cloudprev, #localprev { animation: prevopen .16s ease-out; }
     @keyframes prevopen { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 }
-.repoinfo { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.repoinfo .meta { font-size: 11.5px; color: var(--linen-dim); font-family: Consolas, monospace; }
-.repoinfo .desc { font-size: 12.5px; color: #c3c1b8; }
-.repoactions { display: flex; gap: 8px; flex-shrink: 0; }
+.repoinfo { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 200px; }
+.repoinfo strong { display: flex; align-items: center; flex-wrap: wrap; row-gap: 4px; font-weight: 650; }
+/* One line of data per card: a remote that runs long is cut, never slid
+   under the buttons beside it. */
+.repoinfo .meta {
+    font-size: 11.5px; color: var(--linen-dim); font-family: Consolas, monospace;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.repoinfo .desc { font-size: 12.5px; color: var(--linen-soft); }
+/* The actions are tools on the card, not three primary choices: quiet until
+   pointed at, so the name and its state are what the eye lands on. */
+.repo { flex-wrap: wrap; }
+.repoactions { display: flex; gap: 2px; flex-shrink: 0; margin-left: auto; }
+.repoactions button:not(.primary) {
+    padding: 5px 9px;
+    font-size: 12.5px;
+    background: transparent;
+    border-color: transparent;
+    color: var(--linen-dim);
+}
+.repoactions button:not(.primary):hover:not(:disabled) {
+    color: var(--linen);
+    background: var(--surface);
+    border-color: var(--thread);
+    box-shadow: none;
+}
+.repoactions button.primary { padding: 5px 11px; font-size: 12.5px; }
 
 /* -- Taxonomy chips (ADR-0017) ----------------------------------------- */
 .taxtags { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -787,8 +914,12 @@ body.layout-stacked .previewempty { display: none; }
 }
 .formsearch:focus-visible { outline: 1px solid var(--brass-deep); }
 .kindchips { display: flex; flex-wrap: wrap; gap: 4px; }
-.kindchips .taxtag { cursor: pointer; }
-.kindchips .taxtag.on { background: var(--brass-deep); border-color: var(--brass); color: var(--ink); }
+/* Brass is spent on the filters that are on, not on the nine that could be. */
+.kindchips .taxtag { cursor: pointer; padding: 2px 8px; font-size: 10.5px; }
+.kindchips .taxtag.kind { color: var(--linen-dim); border-color: var(--thread); }
+.kindchips .taxtag.kind:hover { color: var(--linen); border-color: var(--brass-deep); box-shadow: none; }
+.kindchips .taxtag.on { background: var(--brass); border-color: var(--brass); color: var(--ink); font-weight: 600; }
+.kindchips .taxtag.on:hover { color: var(--ink); background: var(--brass-lift); }
 .clearfilter {
     align-self: flex-start;
     padding: 0 2px;
@@ -816,7 +947,7 @@ body.layout-stacked .previewempty { display: none; }
     flex-basis: 100%;
     font-family: system-ui, sans-serif;
     font-size: 12px;
-    color: #c3c1b8;
+    color: var(--linen-soft);
 }
 
 /* -- Syntax colours ----------------------------------------------------
@@ -833,7 +964,7 @@ body.layout-stacked .previewempty { display: none; }
 .hljs-title, .hljs-title.function_, .hljs-subst { color: var(--linen); font-weight: 600; }
 .hljs-title.class_, .hljs-type, .hljs-built_in, .hljs-class .hljs-title { color: var(--brass-lift); font-weight: 600; }
 .hljs-attr, .hljs-variable, .hljs-template-variable, .hljs-selector-attr,
-.hljs-selector-pseudo, .hljs-property { color: #b9c4d6; }
+.hljs-selector-pseudo, .hljs-property { color: var(--code-attr); }
 .hljs-meta, .hljs-params { color: var(--linen-dim); }
 .hljs-emphasis { font-style: italic; }
 .md pre.hljs, .md pre { background: var(--ink); border: 1px solid var(--thread); border-radius: 6px; padding: 10px 12px; overflow-x: auto; }
@@ -876,4 +1007,16 @@ body.layout-stacked .workspace > .splitter { display: none; }
 .whostack .morewho {
     margin-left: 6px; font-style: normal; font-size: 11px;
     font-family: Consolas, monospace; color: var(--linen-dim);
+}
+
+/* -- Cards in a row share a height --------------------------------------
+   So one long description would stretch every card beside it. Two lines
+   are enough to recognise a repository; the whole text is in the tooltip
+   and in the preview. */
+.repo .repoinfo .desc {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
 }
