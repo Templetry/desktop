@@ -1,5 +1,9 @@
 # Templetry Desktop
 
+[![CI](https://github.com/Templetry/desktop/actions/workflows/ci.yml/badge.svg)](https://github.com/Templetry/desktop/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/Templetry/desktop)](https://github.com/Templetry/desktop/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Manage the [Templetry](https://github.com/Templetry) engine from a native app: sign in to your forges, browse the catalog, create ready-to-work repos and keep them up to date.
 
 Built with [Wails](https://wails.io): a Go backend that imports the engine packages directly (no IPC, no sidecar — [ADR-0012](https://github.com/Templetry/wiki/blob/main/adr/0012-desktop-app-wails.md)) and a React/TypeScript frontend.
