@@ -41,7 +41,7 @@ describe("languageFor", () => {
 
     it("is case-insensitive and path-agnostic", () => {
         expect(languageFor("SRC/MAIN.GO")).toBe("go");
-        expect(languageFor("a\windows\path\main.go")).toBe("go");
+        expect(languageFor("a\\windows\\path\\main.go")).toBe("go");
     });
 
     // Guessing wrong is worse than not guessing: the caller falls back to
@@ -64,7 +64,7 @@ describe("highlight", () => {
     // because they are part of the file being shown.
     it("escapes markup instead of rendering it", () => {
         const html = highlight('const x = "<img src=x onerror=alert(1)>";', "a.ts");
-        expect(html).not.toMatch(/<img/);
+        expect(html).not.toMatch(/<img\b/);
         expect(html).toContain("&lt;img");
 
         const el = document.createElement("div");

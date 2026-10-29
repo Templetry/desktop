@@ -99,12 +99,12 @@ describe("shortRemote", () => {
     });
 
     it("leaves what it cannot parse alone", () => {
-        expect(shortRemote("C:\repos\bare")).toBe("C:\repos\bare");
+        expect(shortRemote("C:\\repos\\bare")).toBe("C:\\repos\\bare");
     });
 });
 
 describe("patternProblem", () => {
-    const pkg = "^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$";
+    const pkg = "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$";
 
     it("passes a matching value", () => {
         expect(patternProblem("es.sebas1705", pkg)).toBe("");

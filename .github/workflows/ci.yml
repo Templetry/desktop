@@ -96,6 +96,10 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - working-directory: frontend
         run: npm ci
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+
       - name: Tests
         working-directory: frontend
         run: npm test
