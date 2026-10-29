@@ -36,6 +36,8 @@ export function resolveDoc(from: string, href: string): string {
 // The host stays unless it is github.com, where nearly every remote lives.
 export function shortRemote(url: string): string {
     const u = url.trim().replace(/\.git$/, "").replace(/\/$/, "");
+    // A Windows path (C:\repos\x) is a local checkout, not host "C" in scp form.
+    if (/^[a-z]:[\\/]/i.test(u)) return u;
     const m = u.match(/^(?:[a-z+]+:\/\/)?(?:[^@/]+@)?([^/:]+)[/:](.+)$/i);
     if (!m) return u;
     const [, host, path] = m;

@@ -3,7 +3,7 @@ import { marked } from "marked";
 import DOMPurify from "dompurify";
 import {
     GetCatalogs, GetTemplate, PreviewProject, PreviewFile, ChooseParentDir, GetLastParentDir,
-    GetAuthStatus, StartGitHubLogin, Logout, GetOwners, CreateFullProject,
+    GetAuthStatus, StartGitHubLogin, Logout, CreateFullProject,
     ListRepos, OpenRepo, CloneRepo, GetSettings, SaveSettings, ExportSettings, ImportSettings,
     ScanProjects, OpenFolder, GetVersions, CheckUpdates, CheckDrift, CreateProjectOnRemote,
     GetAccounts, AddAccount, RemoveAccount, GetOwnerOptions, ListPieces, AddPiece,
@@ -174,6 +174,20 @@ function App() {
     const [updates, setUpdates] = useState<any>(null);
     const [updMsg, setUpdMsg] = useState("");
 
+    // Destinations across every signed-in forge (ADR-0015).
+    const [accounts, setAccounts] = useState<any[]>([]);
+    const [ownerOpts, setOwnerOpts] = useState<any[]>([]);
+    const loadAccounts = () => {
+        GetAccounts().then((a: any[]) => setAccounts(a ?? [])).catch(() => {});
+        GetOwnerOptions().then((o: any[]) => {
+            setOwnerOpts(o ?? []);
+            if (!owner && o?.length) {
+                const preferred = o.find((x: any) => x.key.endsWith("/" + settings.defaultOwner));
+                setOwner(preferred ? preferred.key : o[0].key);
+            }
+        }).catch(() => {});
+    };
+
     useEffect(() => {
         EventsOn("device-login", (s: any) => {
             setDeviceLogin(s);
@@ -184,9 +198,12 @@ function App() {
             if (s?.state === "error") setError(s.error ?? "sign-in failed");
         });
         return () => EventsOff("device-login");
+    // Subscribed once; loadAccounts is re-created every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- reset when the host field is cleared
         if (!newAcc.host) { setCanDeviceLogin(false); return; }
         let alive = true;
         SupportsDeviceLogin(newAcc.scheme, newAcc.host)
@@ -450,22 +467,11 @@ function App() {
 
     useEffect(() => {
         loadAccounts();
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- loadRepos starts a fetch; it is not derived state
         if (auth.state === "logged_in" && view === "cloud" && !repos.length) loadRepos();
+    // Runs on sign-in changes only; the loaders are re-created every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [auth.state]);
-
-    // Destinations across every signed-in forge (ADR-0015).
-    const [accounts, setAccounts] = useState<any[]>([]);
-    const [ownerOpts, setOwnerOpts] = useState<any[]>([]);
-    const loadAccounts = () => {
-        GetAccounts().then((a: any[]) => setAccounts(a ?? [])).catch(() => {});
-        GetOwnerOptions().then((o: any[]) => {
-            setOwnerOpts(o ?? []);
-            if (!owner && o?.length) {
-                const preferred = o.find((x: any) => x.key.endsWith("/" + settings.defaultOwner));
-                setOwner(preferred ? preferred.key : o[0].key);
-            }
-        }).catch(() => {});
-    };
 
     const pick = async (cat: string, ref: string) => {
         setSelectedCat(cat);
@@ -542,6 +548,8 @@ function App() {
     // What a form can be verified with depends on the form, so ask whenever
     // the selection changes — and clear any log from the previous one.
     useEffect(() => {
+        // Resetting on selection change is the point of this effect.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setVerifyLog(null); setVerifyOk(null); setVerifyInfo(null);
         if (!selected || !selectedCat) return;
         GetVerifyInfo(selectedCat, selected).then(setVerifyInfo).catch(() => setVerifyInfo(null));

@@ -67,8 +67,8 @@ describe("Splitter", () => {
     it("reports the distance dragged, not the pointer position", () => {
         setup();
         const sep = screen.getByRole("separator");
-        (sep as any).setPointerCapture = vi.fn();
-        (sep as any).releasePointerCapture = vi.fn();
+        (sep as unknown as Record<string, unknown>).setPointerCapture = vi.fn();
+        (sep as unknown as Record<string, unknown>).releasePointerCapture = vi.fn();
 
         fireEvent.pointerDown(sep, { clientX: 800, pointerId: 1 });
         fireEvent.pointerMove(sep, { clientX: 860, pointerId: 1 });
