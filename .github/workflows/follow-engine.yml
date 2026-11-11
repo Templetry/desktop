@@ -2,24 +2,34 @@ name: Follow engine releases
 
 # The engine is compiled into this app, so an engine release only reaches
 # anyone through a desktop build. This bumps the dependency, proves the
-# result still works, and cuts a minor.
+# result still works, and opens a pull request. It never publishes: the app
+# updater installs whatever the latest release contains, so a release is a
+# decision a person makes, not something a schedule or a repository_dispatch
+# may take.
+#
+#   1. Daily (or on repository_dispatch) the bump job opens a PR.
+#   2. A person reviews and merges it.
+#   3. A person runs this workflow manually with "publish" ticked; it tags
+#      the next minor on main and calls release.yml. The release job uses
+#      the "release" environment, so required reviewers can be added there.
 
 on:
   schedule:
-    # Daily. The engine does not release often; a day of lag costs nothing
-    # and keeps this off the critical path of a release.
+    # Daily. The engine does not release often; a day of lag costs nothing.
     - cron: "0 8 * * *"
   repository_dispatch:
     types: [engine-released]
   workflow_dispatch:
     inputs:
-      force:
-        description: Cut a release even if the engine has not moved.
+      publish:
+        description: >-
+          Tag the next minor on main and publish a release. Merge the engine
+          bump PR first. Leave unticked to just run the bump and open a PR.
         type: boolean
         default: false
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: follow-engine
@@ -27,10 +37,12 @@ concurrency:
 
 jobs:
   bump:
+    # Never runs when a person asked to publish.
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.publish) }}
     runs-on: ubuntu-latest
-    outputs:
-      tag: ${{ steps.plan.outputs.tag }}
-      release: ${{ steps.plan.outputs.release }}
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -44,7 +56,7 @@ jobs:
           node-version: "22"
 
       - id: plan
-        name: Has the engine moved, and what would this release be called?
+        name: Has the engine moved?
         run: |
           set -euo pipefail
 
@@ -55,37 +67,37 @@ jobs:
           current=$(grep -o 'github.com/Templetry/engine v[0-9][^ ]*' go.mod | head -1 | cut -d' ' -f2)
           echo "engine: embedded $current, published $latest"
 
-          if [ "$current" = "$latest" ] && [ "${{ inputs.force }}" != "true" ]; then
-            echo "release=false" >> "$GITHUB_OUTPUT"
+          if [ "$current" = "$latest" ]; then
+            echo "bump=false" >> "$GITHUB_OUTPUT"
             echo "nothing to do"
             exit 0
           fi
 
-          # The next minor of whatever this app last shipped, never of the
-          # engine: the two version lines are independent and always were.
-          last=$(git tag --list 'v*' --sort=-v:refname | head -1)
-          [ -n "$last" ] || { echo "::error::no existing tag to count from"; exit 1; }
-          major=$(echo "${last#v}" | cut -d. -f1)
-          minor=$(echo "${last#v}" | cut -d. -f2)
-          tag="v${major}.$((minor + 1)).0"
+          # An open PR for this engine version already exists: leave it be.
+          branch="follow-engine/$latest"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            echo "$branch already exists"
+            echo "bump=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
-          echo "last release $last, next $tag"
-          echo "release=true" >> "$GITHUB_OUTPUT"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "bump=true" >> "$GITHUB_OUTPUT"
           echo "engine=$latest" >> "$GITHUB_OUTPUT"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
 
       - name: Take the new engine
-        if: steps.plan.outputs.release == 'true'
+        if: steps.plan.outputs.bump == 'true'
         env:
           ENGINE: ${{ steps.plan.outputs.engine }}
         run: |
           GOFLAGS=-mod=mod go get "github.com/Templetry/engine@$ENGINE"
           go mod tidy
 
-      # A tag is a promise that the thing builds. Proving it before the tag
-      # exists is the difference between a skipped release and a broken one.
+      # A release is a promise that the thing builds. Proving it before a
+      # person is even asked to look is the difference between a skipped
+      # bump and a broken one.
       - name: It still builds and its tests pass
-        if: steps.plan.outputs.release == 'true'
+        if: steps.plan.outputs.bump == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
@@ -93,24 +105,70 @@ jobs:
           go build -tags webkit2_41 ./...
           go test -tags webkit2_41 ./...
 
-      - name: Commit and tag
-        if: steps.plan.outputs.release == 'true'
+      - name: Push the bump and open a pull request
+        if: steps.plan.outputs.bump == 'true'
         env:
-          TAG: ${{ steps.plan.outputs.tag }}
+          GH_TOKEN: ${{ github.token }}
           ENGINE: ${{ steps.plan.outputs.engine }}
+          BRANCH: ${{ steps.plan.outputs.branch }}
         run: |
           git config user.name "sebss"
           git config user.email "sebssgarcia502580@gmail.com"
+          git checkout -b "$BRANCH"
           git commit -am "engine $ENGINE"
-          git tag -a "$TAG" -m "$TAG — engine $ENGINE
+          git push origin "$BRANCH"
+          # If the repository forbids Actions from opening pull requests this
+          # step fails, but the branch above is already pushed and can be
+          # opened by hand.
+          gh pr create --base main --head "$BRANCH" \
+            --title "engine $ENGINE" \
+            --body "Bumps the embedded engine to $ENGINE. Build and tests passed in the follow-engine workflow.
 
-          Cut automatically: the engine ships inside this app, so an engine
-          release only reaches anyone through a desktop build."
-          git push origin HEAD --tags
+          Merging this does not publish anything. To ship it, run the Follow engine releases workflow manually with publish ticked."
+
+  # Only reached by a person pressing "Run workflow" with publish ticked.
+  tag:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.next.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - id: next
+        name: Tag the next minor on main
+        env:
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          # The next minor of whatever this app last shipped, never of the
+          # engine: the two version lines are independent and always were.
+          last=$(git tag --list 'v*' --sort=-v:refname | head -1)
+          [ -n "$last" ] || { echo "::error::no existing tag to count from"; exit 1; }
+          major=$(echo "${last#v}" | cut -d. -f1)
+          minor=$(echo "${last#v}" | cut -d. -f2)
+          tag="v${major}.$((minor + 1)).0"
+          engine=$(grep -o 'github.com/Templetry/engine v[0-9][^ ]*' go.mod | head -1 | cut -d' ' -f2)
+
+          echo "last release $last, next $tag, engine $engine, requested by $ACTOR"
+          git config user.name "sebss"
+          git config user.email "sebssgarcia502580@gmail.com"
+          git tag -a "$tag" -m "$tag — engine $engine
+
+          Published manually by $ACTOR."
+          git push origin "$tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
   publish:
-    needs: bump
-    if: needs.bump.outputs.release == 'true'
+    needs: tag
+    permissions:
+      contents: write
     uses: ./.github/workflows/release.yml
     with:
-      tag: ${{ needs.bump.outputs.tag }}
+      tag: ${{ needs.tag.outputs.tag }}

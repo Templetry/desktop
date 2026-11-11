@@ -1,11 +1,10 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"os"
 	"os/exec"
 	goruntime "runtime"
 	"runtime/debug"
@@ -75,61 +74,30 @@ func latestRelease(repo string) (tag, url string, err error) {
 func norm(v string) string { return strings.TrimPrefix(strings.TrimSpace(v), "v") }
 
 // InstallAppUpdate downloads the latest Windows installer from releases,
-// launches it and quits the app so the installer can replace it.
+// verifies it against the release's SHA256SUMS, launches it and quits the
+// app so the installer can replace it. Only a strictly newer release is
+// accepted.
 func (a *App) InstallAppUpdate() (string, error) {
 	if goruntime.GOOS != "windows" {
 		return "", fmt.Errorf("in-app update is Windows-only for now — download the new version from https://github.com/Templetry/desktop/releases")
 	}
-	resp, err := http.Get("https://api.github.com/repos/Templetry/desktop/releases/latest")
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+	defer cancel()
+	path, tag, err := newAppUpdater().fetchInstaller(ctx, version)
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
-	var rel struct {
-		TagName string `json:"tag_name"`
-		Assets  []struct {
-			Name string `json:"name"`
-			URL  string `json:"browser_download_url"`
-		} `json:"assets"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
-		return "", err
-	}
-	url := ""
-	for _, as := range rel.Assets {
-		if strings.HasSuffix(as.Name, "-windows-installer.exe") {
-			url = as.URL
-			break
-		}
-	}
-	if url == "" {
-		return "", fmt.Errorf("the latest release has no Windows installer asset")
-	}
-	dl, err := http.Get(url)
-	if err != nil {
-		return "", err
-	}
-	defer dl.Body.Close()
-	tmp, err := os.CreateTemp("", "Templetry-update-*.exe")
-	if err != nil {
-		return "", err
-	}
-	if _, err := io.Copy(tmp, dl.Body); err != nil {
-		tmp.Close()
-		return "", err
-	}
-	tmp.Close()
 	// The NSIS installer installs machine-wide and carries an elevation
 	// manifest — plain CreateProcess fails with "requires elevation".
 	// cmd's start goes through ShellExecute, which shows the UAC prompt.
-	if err := exec.Command("cmd", "/C", "start", "", tmp.Name()).Start(); err != nil {
+	if err := exec.Command("cmd", "/C", "start", "", path).Start(); err != nil {
 		return "", fmt.Errorf("could not launch the installer: %w", err)
 	}
 	go func() {
 		time.Sleep(500 * time.Millisecond)
 		wruntime.Quit(a.ctx)
 	}()
-	return rel.TagName, nil
+	return tag, nil
 }
 
 // CheckUpdates compares the running versions against the latest releases.
@@ -146,7 +114,7 @@ func (a *App) CheckUpdates() (UpdateInfo, error) {
 		// Dev/local builds never flag updates; /releases/latest already
 		// excludes drafts and prereleases by contract.
 		if cur != "dev" && !strings.HasSuffix(cur, "-local") && !strings.HasSuffix(cur, "-dev") {
-			out.AppUpdate = norm(appTag) != cur
+			out.AppUpdate = isNewerVersion(cur, appTag)
 		}
 	}
 	if errB == nil {
